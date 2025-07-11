@@ -20,7 +20,7 @@ A comprehensive MERN stack rental marketplace where users can list items for ren
 - Booking status tracking (Pending, Confirmed, Cancelled, Completed)
 - Booking history for both renters and customers
 
-### Search & Filtering
+### Search & Filtering 
 - Keyword search
 - Filter by category, location, price range, dates, and ratings
 
