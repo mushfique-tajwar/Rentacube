@@ -11,6 +11,13 @@ const userSchema = new Schema({
         minlength: 3,
         maxlength: 20
     },
+    fullName: {
+        type: String,
+        required: true,
+        trim: true,
+        minlength: 2,
+        maxlength: 50
+    },
     email: {
         type: String,
         required: true,
@@ -22,6 +29,12 @@ const userSchema = new Schema({
         type: String,
         required: true,
         minlength: 6
+    },
+    userType: {
+        type: String,
+        required: true,
+        enum: ['renter', 'lister'],
+        default: 'renter'
     },
     createdAt: {
         type: Date,

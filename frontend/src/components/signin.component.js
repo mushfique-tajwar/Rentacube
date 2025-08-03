@@ -43,10 +43,23 @@ export default class SignIn extends Component {
 
     axios.post('http://localhost:3000/users/login', loginData)
       .then(res => {
-        console.log('Sign in successful:', res.data);
-        // Save username to localStorage for navbar display
+        console.log('=== SIGNIN DEBUG ===');
+        console.log('Full server response:', res.data);
+        console.log('userType from server:', res.data.userType);
+        console.log('isAdmin from server:', res.data.isAdmin);
+        console.log('typeof isAdmin from server:', typeof res.data.isAdmin);
+        
+        // Save username, fullName, userType and admin status to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
+        localStorage.setItem('fullName', res.data.fullName || '');
+        localStorage.setItem('userType', res.data.userType || 'renter');
+        localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
         localStorage.setItem('isLoggedIn', 'true');
+        
+        console.log('=== STORED IN LOCALSTORAGE ===');
+        console.log('userType stored:', localStorage.getItem('userType'));
+        console.log('isAdmin stored:', localStorage.getItem('isAdmin'));
+        console.log('=== END SIGNIN DEBUG ===');
         
         this.setState({
           message: 'Sign in successful! Redirecting...',
@@ -55,9 +68,14 @@ export default class SignIn extends Component {
           password: ''
         });
         
-        // Redirect to homepage after successful sign in
+        // Redirect based on user type - admin goes to admin panel, others go to homepage
         setTimeout(() => {
-          window.location.href = '/';
+          if (res.data.isAdmin) {
+            // Force a complete page reload to ensure navbar updates
+            window.location.replace('/admin');
+          } else {
+            window.location.replace('/');
+          }
         }, 1500);
       })
       .catch(err => {

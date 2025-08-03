@@ -27,6 +27,16 @@ const listingSchema = new Schema({
         required: true,
         trim: true
     },
+    district: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    city: {
+        type: String,
+        required: true,
+        trim: true
+    },
     category: {
         type: String,
         required: true,

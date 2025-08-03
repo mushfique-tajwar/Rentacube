@@ -9,6 +9,8 @@ import CreateUser from './components/create-user.component';
 import SignIn from './components/signin.component';
 import Dashboard from './components/dashboard.component';
 import Homepage from './components/homepage.component';
+import CreateListing from './components/create-listing.component';
+import AdminPanel from './components/admin-panel.component';
 
 
 function App() {
@@ -23,6 +25,8 @@ function App() {
             <Route path="/contact" element={<h1>Contact Us</h1>} />
             <Route path="/signin" element={<SignIn />} />
             <Route path="/create-user" element={<CreateUser />} />
+            <Route path="/create-listing" element={<CreateListing />} />
+            <Route path="/admin" element={<AdminPanel />} />
             <Route path="/dashboard" element={<Dashboard />} />
           </Routes>
           </div>

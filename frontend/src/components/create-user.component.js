@@ -9,14 +9,18 @@ export default class CreateUser extends Component {
     super(props);
 
     this.onChangeUsername = this.onChangeUsername.bind(this);
+    this.onChangeFullName = this.onChangeFullName.bind(this);
     this.onChangeEmail = this.onChangeEmail.bind(this);
     this.onChangePassword = this.onChangePassword.bind(this);
+    this.onChangeUserType = this.onChangeUserType.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
 
     this.state = {
       username: '',
+      fullName: '',
       email: '',
       password: '',
+      userType: 'renter', // Default to renter
       message: '',
       isLoading: false
     };
@@ -25,6 +29,12 @@ export default class CreateUser extends Component {
   onChangeUsername(e) {
     this.setState({
       username: e.target.value
+    });
+  }
+
+  onChangeFullName(e) {
+    this.setState({
+      fullName: e.target.value
     });
   }
 
@@ -40,6 +50,12 @@ export default class CreateUser extends Component {
     });
   }
 
+  onChangeUserType(e) {
+    this.setState({
+      userType: e.target.value
+    });
+  }
+
   onSubmit(e) {
     e.preventDefault();
 
@@ -47,8 +63,10 @@ export default class CreateUser extends Component {
 
     const user = {
       username: this.state.username,
+      fullName: this.state.fullName,
       email: this.state.email,
-      password: this.state.password
+      password: this.state.password,
+      userType: this.state.userType
     };
 
     console.log('Submitting user:', user);
@@ -56,19 +74,28 @@ export default class CreateUser extends Component {
     axios.post('http://localhost:3000/users/add', user)
       .then(res => {
         console.log('User created successfully:', res.data);
-        // Save username to localStorage for navbar display
+        // Save username, fullName and userType to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
+        localStorage.setItem('fullName', res.data.fullName || this.state.fullName);
+        localStorage.setItem('userType', res.data.userType || this.state.userType);
+        localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
         localStorage.setItem('isLoggedIn', 'true');
         this.setState({
           message: 'User created successfully!',
           isLoading: false,
           username: '',
+          fullName: '',
           email: '',
-          password: ''
+          password: '',
+          userType: 'renter'
         });
-        // Redirect to dashboard after successful account creation
+        // Redirect based on user type - admin goes to admin panel, others go to homepage
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          if (res.data.isAdmin) {
+            window.location.href = '/admin';
+          } else {
+            window.location.href = '/';
+          }
         }, 1500);
       })
       .catch(err => {
@@ -99,6 +126,20 @@ export default class CreateUser extends Component {
               required
               minLength="3"
               maxLength="20"
+              placeholder="Enter your username"
+            />
+          </div>
+          <div className="form-group mb-3">
+            <label className="form-label mb-2">Full Name:</label>
+            <input 
+              type="text" 
+              className="form-control"
+              value={this.state.fullName}
+              onChange={this.onChangeFullName}
+              required
+              minLength="2"
+              maxLength="50"
+              placeholder="Enter your full name"
             />
           </div>
           <div className="form-group mb-3">
@@ -120,7 +161,23 @@ export default class CreateUser extends Component {
               onChange={this.onChangePassword}
               required
               minLength="6"
+              placeholder="Enter your password"
             />
+          </div>
+          <div className="form-group mb-3">
+            <label className="form-label mb-2">Account Type:</label>
+            <select 
+              className="form-select"
+              value={this.state.userType}
+              onChange={this.onChangeUserType}
+              required
+            >
+              <option value="renter">🏠 Renter - I want to rent items</option>
+              <option value="lister">📋 Lister - I want to rent out my items</option>
+            </select>
+            <div className="form-text">
+              Choose "Renter" to browse and rent items, or "Lister" to create and manage your own listings.
+            </div>
           </div>
           <button 
             type="submit" 

@@ -1,5 +1,41 @@
 const router = require('express').Router();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
 const Listing = require('../models/listing.model');
+
+// Configure multer for image uploads
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadPath = path.join(__dirname, '../../frontend/public/images/listings');
+        // Create directory if it doesn't exist
+        if (!fs.existsSync(uploadPath)) {
+            fs.mkdirSync(uploadPath, { recursive: true });
+        }
+        cb(null, uploadPath);
+    },
+    filename: function (req, file, cb) {
+        // Generate unique filename
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+// Configure multer with file size limit and file type validation
+const upload = multer({
+    storage: storage,
+    limits: {
+        fileSize: 150 * 1024 // 150KB limit
+    },
+    fileFilter: function (req, file, cb) {
+        // Check file type
+        if (file.mimetype.startsWith('image/')) {
+            cb(null, true);
+        } else {
+            cb(new Error('Only image files are allowed!'), false);
+        }
+    }
+});
 
 // GET all listings
 router.route('/').get((req, res) => {
@@ -43,7 +79,69 @@ router.route('/:id').get((req, res) => {
         .catch(err => res.status(400).json('Error: ' + err));
 });
 
-// POST - Add new listing
+// POST - Add new listing with image upload
+router.route('/create').post(upload.single('image'), (req, res) => {
+    const {
+        name,
+        description,
+        pricePerDay,
+        district,
+        city,
+        category,
+        owner
+    } = req.body;
+
+    // Validation
+    if (!name || !description || !pricePerDay || !district || !city || !category || !owner) {
+        return res.status(400).json('All required fields must be provided');
+    }
+
+    // Image is now mandatory
+    if (!req.file) {
+        return res.status(400).json('Image is required for all listings');
+    }
+
+    if (pricePerDay <= 0) {
+        return res.status(400).json('Price per day must be greater than 0');
+    }
+
+    const validCategories = ['vehicles', 'electronics', 'clothing', 'home', 'property', 'sports', 'services'];
+    if (!validCategories.includes(category.toLowerCase())) {
+        return res.status(400).json('Invalid category');
+    }
+
+    // Handle image - now mandatory
+    const imageFilename = req.file.filename;
+
+    const newListing = new Listing({
+        name: name.trim(),
+        description: description.trim(),
+        pricePerDay: Number(pricePerDay),
+        location: `${city.trim()}, ${district.trim()}`, // Backward compatibility
+        district: district.trim(),
+        city: city.trim(),
+        category: category.toLowerCase(),
+        image: imageFilename,
+        owner: owner.trim()
+    });
+
+    newListing.save()
+        .then(() => res.json({
+            message: 'Listing created successfully!',
+            listing: newListing
+        }))
+        .catch(err => {
+            // If there was an error saving to database, delete the uploaded file
+            if (req.file) {
+                fs.unlink(req.file.path, (unlinkErr) => {
+                    if (unlinkErr) console.error('Error deleting file:', unlinkErr);
+                });
+            }
+            res.status(400).json('Error: ' + err);
+        });
+});
+
+// POST - Add new listing (existing route for backward compatibility)
 router.route('/add').post((req, res) => {
     const {
         name,
@@ -243,6 +341,74 @@ router.route('/seed').post((req, res) => {
 
     Listing.insertMany(sampleListings)
         .then(() => res.json('Sample listings added successfully!'))
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
+// Admin routes - Update any listing
+router.route('/admin/update/:id').put((req, res) => {
+    // Simple admin check (in production, use proper JWT authentication)
+    if (req.body.adminUsername !== 'admin') {
+        return res.status(403).json('Access denied. Admin privileges required.');
+    }
+    
+    Listing.findById(req.params.id)
+        .then(listing => {
+            if (!listing) {
+                return res.status(404).json('Listing not found');
+            }
+            
+            // Update fields
+            listing.name = req.body.name || listing.name;
+            listing.description = req.body.description || listing.description;
+            listing.pricePerDay = req.body.pricePerDay || listing.pricePerDay;
+            listing.district = req.body.district || listing.district;
+            listing.city = req.body.city || listing.city;
+            listing.location = req.body.location || listing.location;
+            listing.category = req.body.category || listing.category;
+            listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
+            
+            return listing.save();
+        })
+        .then(() => res.json('Listing updated successfully!'))
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
+// Admin routes - Delete any listing (hard delete)
+router.route('/admin/delete/:id').delete((req, res) => {
+    // Simple admin check (in production, use proper JWT authentication)
+    if (req.body.adminUsername !== 'admin') {
+        return res.status(403).json('Access denied. Admin privileges required.');
+    }
+    
+    Listing.findByIdAndDelete(req.params.id)
+        .then(listing => {
+            if (!listing) {
+                return res.status(404).json('Listing not found');
+            }
+            
+            // Delete associated image file if it exists
+            if (listing.image) {
+                const imagePath = path.join(__dirname, '../../frontend/public/images/listings', listing.image);
+                fs.unlink(imagePath, (err) => {
+                    if (err) console.error('Error deleting image file:', err);
+                });
+            }
+            
+            res.json('Listing deleted successfully!');
+        })
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
+// Admin routes - Get all listings (including inactive)
+router.route('/admin/all').get((req, res) => {
+    // Simple admin check via query parameter
+    if (req.query.adminUsername !== 'admin') {
+        return res.status(403).json('Access denied. Admin privileges required.');
+    }
+    
+    Listing.find({}) // Get all listings, including inactive ones
+        .sort({ createdAt: -1 })
+        .then(listings => res.json(listings))
         .catch(err => res.status(400).json('Error: ' + err));
 });
 

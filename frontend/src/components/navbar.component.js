@@ -4,42 +4,82 @@ import { Link } from 'react-router-dom';
 export default class Navbar extends Component {
   constructor(props) {
     super(props);
-    
+
     this.state = {
       isLoggedIn: false,
-      username: ''
+      username: '',
+      fullName: '',
+      userType: '',
+      isAdmin: false
     };
   }
 
-  // This would typically come from your authentication system
-  // For now, you can manually set this or integrate with your auth logic
   componentDidMount() {
-    // Check if user is logged in from localStorage or your auth system
     const savedUser = localStorage.getItem('username');
+    const fullName = localStorage.getItem('fullName') || '';
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+
+    // Safely parse admin flag
+    const isAdmin = JSON.parse(localStorage.getItem('isAdmin') || 'false');
+
+    // Normalize userType string
+    const userType = (localStorage.getItem('userType') || '').toLowerCase();
+
+    // Debug logs to confirm what's being loaded
+    console.log("=== NAVBAR DEBUG ===");
+    console.log("Loaded from localStorage:");
+    console.log("username:", savedUser);
+    console.log("fullName:", fullName);
+    console.log("isLoggedIn:", isLoggedIn);
+    console.log("userType:", userType);
+    console.log("isAdmin:", isAdmin);
+    console.log("typeof isAdmin:", typeof isAdmin);
+    console.log("=== END DEBUG ===");
+
     if (savedUser && isLoggedIn) {
       this.setState({
         isLoggedIn: true,
-        username: savedUser
+        username: savedUser,
+        fullName: fullName,
+        userType: userType,
+        isAdmin: isAdmin
       });
     }
   }
 
   handleSignOut = () => {
-    // Clear localStorage
     localStorage.removeItem('username');
+    localStorage.removeItem('fullName');
+    localStorage.removeItem('userType');
+    localStorage.removeItem('isAdmin');
     localStorage.removeItem('isLoggedIn');
-    
-    // Update state
+
     this.setState({
       isLoggedIn: false,
-      username: ''
+      username: '',
+      fullName: '',
+      userType: '',
+      isAdmin: false
     });
-    
-    // Redirect to home
+
     window.location.href = '/';
   }
+
   render() {
+    const { isLoggedIn, isAdmin, userType, fullName, username } = this.state;
+    const userDisplayName = fullName || username;
+
+    let badgeClass = 'bg-primary';
+    let badgeLabel = '🏠 Renter';
+
+    if (isAdmin) {
+      badgeClass = 'bg-danger';
+      badgeLabel = '👑 Admin';
+    } else if (userType === 'lister') {
+      badgeClass = 'bg-success';
+      badgeLabel = '📋 Lister';
+    }
+
     return (
       <>
         <nav className="navbar navbar-expand-lg navbar-light bg-info">
@@ -58,13 +98,21 @@ export default class Navbar extends Component {
                 </li>
               </ul>
               <ul className="navbar-nav ms-auto">
-                {this.state.isLoggedIn ? (
+                {isLoggedIn ? (
                   <>
-                    <li className="nav-item">
-                      <Link to="/dashboard" className="nav-link">
-                        <i className="fas fa-tachometer-alt me-1"></i>Dashboard
-                      </Link>
-                    </li>
+                    {isAdmin ? (
+                      <li className="nav-item">
+                        <Link to="/admin" className="nav-link">
+                          <i className="fas fa-cog me-1"></i>Admin Panel
+                        </Link>
+                      </li>
+                    ) : (
+                      <li className="nav-item">
+                        <Link to="/dashboard" className="nav-link">
+                          <i className="fas fa-tachometer-alt me-1"></i>Dashboard
+                        </Link>
+                      </li>
+                    )}
                     <li className="nav-item">
                       <button 
                         className="nav-link btn btn-link" 
@@ -93,15 +141,20 @@ export default class Navbar extends Component {
             </div>
           </div>
         </nav>
-        
+
         {/* Secondary navbar for welcome message */}
-        <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
-          <div className="container-fluid">
-            <span className="navbar-text mx-auto">
-              Welcome, {this.state.isLoggedIn ? this.state.username : 'Guest'}
-            </span>
-          </div>
-        </nav>
+        {isLoggedIn && (
+          <nav className="navbar navbar-expand-lg navbar-light bg-light border-bottom">
+            <div className="container-fluid">
+              <span className="navbar-text mx-auto">
+                Welcome, {userDisplayName}
+                <span className={`badge ms-2 ${badgeClass}`}>
+                  {badgeLabel}
+                </span>
+              </span>
+            </div>
+          </nav>
+        )}
       </>
     );
   }

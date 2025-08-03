@@ -7,7 +7,11 @@ export default class Homepage extends Component {
 
     this.state = {
       selectedCategory: '',
-      selectedLocation: '',
+      selectedDistrict: '',
+      selectedCity: '',
+      pendingCategory: '',
+      pendingDistrict: '',
+      pendingCity: '',
       listings: [],
       filteredListings: [],
       isLoading: true,
@@ -44,12 +48,28 @@ export default class Homepage extends Component {
 
   handleCategoryChange = (e) => {
     const category = e.target.value;
-    this.setState({ selectedCategory: category }, this.filterListings);
+    this.setState({ pendingCategory: category });
   }
 
-  handleLocationChange = (e) => {
-    const location = e.target.value;
-    this.setState({ selectedLocation: location }, this.filterListings);
+  handleDistrictChange = (e) => {
+    const district = e.target.value;
+    this.setState({ 
+      pendingDistrict: district,
+      pendingCity: '' // Reset city when district changes
+    });
+  }
+
+  handleCityChange = (e) => {
+    const city = e.target.value;
+    this.setState({ pendingCity: city });
+  }
+
+  applyFilters = () => {
+    this.setState({
+      selectedCategory: this.state.pendingCategory,
+      selectedDistrict: this.state.pendingDistrict,
+      selectedCity: this.state.pendingCity
+    }, this.filterListings);
   }
 
   filterListings = () => {
@@ -59,8 +79,12 @@ export default class Homepage extends Component {
       filtered = filtered.filter(listing => listing.category === this.state.selectedCategory);
     }
 
-    if (this.state.selectedLocation) {
-      filtered = filtered.filter(listing => listing.location === this.state.selectedLocation);
+    if (this.state.selectedDistrict) {
+      filtered = filtered.filter(listing => listing.district === this.state.selectedDistrict);
+    }
+
+    if (this.state.selectedCity) {
+      filtered = filtered.filter(listing => listing.city === this.state.selectedCity);
     }
 
     this.setState({ filteredListings: filtered });
@@ -69,13 +93,49 @@ export default class Homepage extends Component {
   clearFilters = () => {
     this.setState({
       selectedCategory: '',
-      selectedLocation: '',
+      selectedDistrict: '',
+      selectedCity: '',
+      pendingCategory: '',
+      pendingDistrict: '',
+      pendingCity: '',
       filteredListings: this.state.listings
     });
   }
 
-  getUniqueLocations = () => {
-    return [...new Set(this.state.listings.map(listing => listing.location))].sort();
+  // Check if there are pending filter changes
+  hasPendingChanges = () => {
+    return this.state.pendingCategory !== this.state.selectedCategory || 
+           this.state.pendingDistrict !== this.state.selectedDistrict ||
+           this.state.pendingCity !== this.state.selectedCity;
+  }
+
+  // Check if any filters are currently applied
+  hasActiveFilters = () => {
+    return this.state.selectedCategory !== '' || 
+           this.state.selectedDistrict !== '' || 
+           this.state.selectedCity !== '';
+  }
+
+  getUniqueDistricts = () => {
+    return [...new Set(this.state.listings.map(listing => listing.district))].sort();
+  }
+
+  getUniqueCities = () => {
+    if (!this.state.pendingDistrict) {
+      return [];
+    }
+    return [...new Set(
+      this.state.listings
+        .filter(listing => listing.district === this.state.pendingDistrict)
+        .map(listing => listing.city)
+    )].sort();
+  }
+
+  // Check if user can create listings
+  canCreateListing = () => {
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const userType = localStorage.getItem('userType');
+    return isLoggedIn && userType === 'lister';
   }
 
   // Get image path from database or return null for placeholder
@@ -156,7 +216,7 @@ export default class Homepage extends Component {
                   </label>
                   <select 
                     className="form-select"
-                    value={this.state.selectedCategory}
+                    value={this.state.pendingCategory}
                     onChange={this.handleCategoryChange}
                   >
                     <option value="">All Categories</option>
@@ -170,30 +230,61 @@ export default class Homepage extends Component {
                   </select>
                 </div>
 
-                {/* Location Filter */}
+                {/* District Filter */}
                 <div className="mb-4">
                   <label className="form-label fw-bold">
-                    <i className="fas fa-map-marker-alt me-2"></i>Location
+                    <i className="fas fa-map-marker-alt me-2"></i>District
                   </label>
                   <select 
                     className="form-select"
-                    value={this.state.selectedLocation}
-                    onChange={this.handleLocationChange}
+                    value={this.state.pendingDistrict}
+                    onChange={this.handleDistrictChange}
                   >
-                    <option value="">All Locations</option>
-                    {this.getUniqueLocations().map(location => (
-                      <option key={location} value={location}>📍 {location}</option>
+                    <option value="">All Districts</option>
+                    {this.getUniqueDistricts().map(district => (
+                      <option key={district} value={district}>🏛️ {district}</option>
                     ))}
                   </select>
                 </div>
 
-                {/* Clear Filters Button */}
-                <button 
-                  className="btn btn-outline-secondary w-100"
-                  onClick={this.clearFilters}
-                >
-                  <i className="fas fa-times me-2"></i>Clear Filters
-                </button>
+                {/* City Filter - only show when district is selected */}
+                {this.state.pendingDistrict && (
+                  <div className="mb-4">
+                    <label className="form-label fw-bold">
+                      <i className="fas fa-city me-2"></i>City
+                    </label>
+                    <select 
+                      className="form-select"
+                      value={this.state.pendingCity}
+                      onChange={this.handleCityChange}
+                    >
+                      <option value="">All Cities in {this.state.pendingDistrict}</option>
+                      {this.getUniqueCities().map(city => (
+                        <option key={city} value={city}>🏙️ {city}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Apply Filters Button - only show when there are pending changes */}
+                {this.hasPendingChanges() && (
+                  <button 
+                    className="btn btn-primary w-100 mb-3"
+                    onClick={this.applyFilters}
+                  >
+                    <i className="fas fa-check me-2"></i>Apply Filters
+                  </button>
+                )}
+
+                {/* Clear Filters Button - only show when filters are applied */}
+                {this.hasActiveFilters() && (
+                  <button 
+                    className="btn btn-outline-secondary w-100"
+                    onClick={this.clearFilters}
+                  >
+                    <i className="fas fa-times me-2"></i>Clear Filters
+                  </button>
+                )}
 
                 {/* Results Count */}
                 <div className="mt-3 text-muted small">
@@ -207,9 +298,14 @@ export default class Homepage extends Component {
           <div className="col-md-9">
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h2>Available Listings</h2>
-              <button className="btn btn-primary">
-                <i className="fas fa-plus me-2"></i>Add New Listing
-              </button>
+              {this.canCreateListing() && (
+                <button 
+                  className="btn btn-primary"
+                  onClick={() => window.location.href = '/create-listing'}
+                >
+                  <i className="fas fa-plus me-2"></i>Create Your Listing
+                </button>
+              )}
             </div>
 
             {/* Listings Grid */}
@@ -293,8 +389,11 @@ export default class Homepage extends Component {
                           <span className="badge bg-primary me-2">
                             {listing.category.charAt(0).toUpperCase() + listing.category.slice(1)}
                           </span>
-                          <span className="badge bg-secondary">
-                            <i className="fas fa-map-marker-alt me-1"></i>{listing.location}
+                          <span className="badge bg-secondary me-2">
+                            <i className="fas fa-map-marker-alt me-1"></i>{listing.district}
+                          </span>
+                          <span className="badge bg-info">
+                            <i className="fas fa-city me-1"></i>{listing.city}
                           </span>
                         </div>
                         
