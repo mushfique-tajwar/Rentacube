@@ -40,6 +40,31 @@ export default class CreateListing extends Component {
     };
   }
 
+  componentDidMount() {
+    // Check if user is logged in and is a renter
+    const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
+    const username = localStorage.getItem('username');
+    const fullName = localStorage.getItem('fullName');
+    const userType = localStorage.getItem('userType');
+
+    console.log('Component mount - Login status:', {
+      isLoggedIn,
+      username,
+      fullName,
+      userType
+    });
+
+    if (!isLoggedIn) {
+      this.setState({ message: 'Please log in to create a listing.' });
+      return;
+    }
+
+    if (userType !== 'renter') {
+      this.setState({ message: 'Only renters can create listings. Please contact support to change your account type.' });
+      return;
+    }
+  }
+
   onChangeName(e) {
     this.setState({ name: e.target.value });
   }
@@ -91,7 +116,7 @@ export default class CreateListing extends Component {
   onSubmit(e) {
     e.preventDefault();
 
-    // Check if user is logged in and is a lister
+    // Check if user is logged in and is a renter
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const userType = localStorage.getItem('userType');
     const username = localStorage.getItem('username');
@@ -101,8 +126,8 @@ export default class CreateListing extends Component {
       return;
     }
 
-    if (userType !== 'lister') {
-      this.setState({ message: 'Only listers can create listings. Please contact support to change your account type.' });
+    if (userType !== 'renter') {
+      this.setState({ message: 'Only renters can create listings. Please contact support to change your account type.' });
       return;
     }
 

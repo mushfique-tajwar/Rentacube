@@ -20,7 +20,7 @@ export default class CreateUser extends Component {
       fullName: '',
       email: '',
       password: '',
-      userType: 'renter', // Default to renter
+      userType: 'customer', // Default to customer
       message: '',
       isLoading: false
     };
@@ -87,7 +87,7 @@ export default class CreateUser extends Component {
           fullName: '',
           email: '',
           password: '',
-          userType: 'renter'
+          userType: 'customer'
         });
         // Redirect based on user type - admin goes to admin panel, others go to homepage
         setTimeout(() => {
@@ -172,11 +172,11 @@ export default class CreateUser extends Component {
               onChange={this.onChangeUserType}
               required
             >
-              <option value="renter">🏠 Renter - I want to rent items</option>
-              <option value="lister">📋 Lister - I want to rent out my items</option>
+              <option value="customer">🛒 Customer - I want to rent items</option>
+              <option value="renter">🏠 Renter - I want to rent out my items</option>
             </select>
             <div className="form-text">
-              Choose "Renter" to browse and rent items, or "Lister" to create and manage your own listings.
+              Choose "Customer" to browse and rent items, or "Renter" to create and manage your own listings.
             </div>
           </div>
           <button 

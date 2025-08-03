@@ -70,14 +70,14 @@ export default class Navbar extends Component {
     const userDisplayName = fullName || username;
 
     let badgeClass = 'bg-primary';
-    let badgeLabel = '🏠 Renter';
+    let badgeLabel = '🛒 Customer';
 
     if (isAdmin) {
       badgeClass = 'bg-danger';
       badgeLabel = '👑 Admin';
-    } else if (userType === 'lister') {
+    } else if (userType === 'renter') {
       badgeClass = 'bg-success';
-      badgeLabel = '📋 Lister';
+      badgeLabel = '🏠 Renter';
     }
 
     return (

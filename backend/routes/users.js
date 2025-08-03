@@ -13,7 +13,7 @@ router.route('/add').post((req, res) => {
     const fullName = req.body.fullName;
     const email = req.body.email;
     const password = req.body.password;
-    const userType = req.body.userType || 'renter'; // Default to renter if not specified
+    const userType = req.body.userType || 'customer'; // Default to customer if not specified
     
     // Check if username already exists
     User.findOne({ username: username })

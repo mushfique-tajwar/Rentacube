@@ -33,8 +33,8 @@ const userSchema = new Schema({
     userType: {
         type: String,
         required: true,
-        enum: ['renter', 'lister'],
-        default: 'renter'
+        enum: ['customer', 'renter'],
+        default: 'customer'
     },
     createdAt: {
         type: Date,

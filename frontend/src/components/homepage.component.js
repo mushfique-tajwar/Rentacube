@@ -9,9 +9,15 @@ export default class Homepage extends Component {
       selectedCategory: '',
       selectedDistrict: '',
       selectedCity: '',
+      selectedMinPrice: '',
+      selectedMaxPrice: '',
       pendingCategory: '',
       pendingDistrict: '',
       pendingCity: '',
+      pendingMinPrice: '',
+      pendingMaxPrice: '',
+      searchQuery: '',
+      sortBy: 'default', // default, price-low-high, price-high-low, name-a-z, name-z-a
       listings: [],
       filteredListings: [],
       isLoading: true,
@@ -24,17 +30,35 @@ export default class Homepage extends Component {
     this.fetchListings();
   }
 
+  // Fisher-Yates shuffle algorithm to randomize array order
+  shuffleArray = (array) => {
+    const shuffled = [...array]; // Create a copy to avoid mutating original
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
   fetchListings = () => {
     this.setState({ isLoading: true });
     
     axios.get('http://localhost:3000/listings')
       .then(response => {
         console.log('Listings fetched successfully:', response.data);
+        // Randomize the order of listings on every page visit
+        const randomizedListings = this.shuffleArray(response.data);
+        
         this.setState({
-          listings: response.data,
-          filteredListings: response.data,
+          listings: randomizedListings,
+          filteredListings: randomizedListings,
           isLoading: false,
           error: null
+        }, () => {
+          // Apply initial sorting if any is selected
+          if (this.state.sortBy !== 'default') {
+            this.filterAndSortListings();
+          }
         });
       })
       .catch(error => {
@@ -64,17 +88,54 @@ export default class Homepage extends Component {
     this.setState({ pendingCity: city });
   }
 
+  handleMinPriceChange = (e) => {
+    const price = e.target.value;
+    this.setState({ pendingMinPrice: price });
+  }
+
+  handleMaxPriceChange = (e) => {
+    const price = e.target.value;
+    this.setState({ pendingMaxPrice: price });
+  }
+
+  handleSortChange = (e) => {
+    const sortBy = e.target.value;
+    this.setState({ sortBy: sortBy }, () => {
+      this.filterAndSortListings();
+    });
+  }
+
+  handleSearchChange = (e) => {
+    const searchQuery = e.target.value;
+    this.setState({ searchQuery: searchQuery }, () => {
+      this.filterAndSortListings();
+    });
+  }
+
   applyFilters = () => {
     this.setState({
       selectedCategory: this.state.pendingCategory,
       selectedDistrict: this.state.pendingDistrict,
-      selectedCity: this.state.pendingCity
-    }, this.filterListings);
+      selectedCity: this.state.pendingCity,
+      selectedMinPrice: this.state.pendingMinPrice,
+      selectedMaxPrice: this.state.pendingMaxPrice
+    }, this.filterAndSortListings);
   }
 
-  filterListings = () => {
+  filterAndSortListings = () => {
     let filtered = this.state.listings;
 
+    // Apply search filter
+    if (this.state.searchQuery) {
+      const query = this.state.searchQuery.toLowerCase();
+      filtered = filtered.filter(listing => 
+        listing.name.toLowerCase().includes(query) ||
+        listing.description.toLowerCase().includes(query) ||
+        listing.category.toLowerCase().includes(query)
+      );
+    }
+
+    // Apply filters
     if (this.state.selectedCategory) {
       filtered = filtered.filter(listing => listing.category === this.state.selectedCategory);
     }
@@ -87,6 +148,40 @@ export default class Homepage extends Component {
       filtered = filtered.filter(listing => listing.city === this.state.selectedCity);
     }
 
+    // Apply price filters
+    if (this.state.selectedMinPrice) {
+      filtered = filtered.filter(listing => listing.pricePerDay >= parseFloat(this.state.selectedMinPrice));
+    }
+
+    if (this.state.selectedMaxPrice) {
+      filtered = filtered.filter(listing => listing.pricePerDay <= parseFloat(this.state.selectedMaxPrice));
+    }
+
+    // Apply sorting
+    switch (this.state.sortBy) {
+      case 'newest':
+        filtered.sort((a, b) => new Date(b.createdAt || b._id) - new Date(a.createdAt || a._id));
+        break;
+      case 'oldest':
+        filtered.sort((a, b) => new Date(a.createdAt || a._id) - new Date(b.createdAt || b._id));
+        break;
+      case 'price-low-high':
+        filtered.sort((a, b) => a.pricePerDay - b.pricePerDay);
+        break;
+      case 'price-high-low':
+        filtered.sort((a, b) => b.pricePerDay - a.pricePerDay);
+        break;
+      case 'name-a-z':
+        filtered.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case 'name-z-a':
+        filtered.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      default:
+        // Keep randomized order for 'default'
+        break;
+    }
+
     this.setState({ filteredListings: filtered });
   }
 
@@ -95,9 +190,15 @@ export default class Homepage extends Component {
       selectedCategory: '',
       selectedDistrict: '',
       selectedCity: '',
+      selectedMinPrice: '',
+      selectedMaxPrice: '',
       pendingCategory: '',
       pendingDistrict: '',
       pendingCity: '',
+      pendingMinPrice: '',
+      pendingMaxPrice: '',
+      searchQuery: '',
+      sortBy: 'default',
       filteredListings: this.state.listings
     });
   }
@@ -106,14 +207,20 @@ export default class Homepage extends Component {
   hasPendingChanges = () => {
     return this.state.pendingCategory !== this.state.selectedCategory || 
            this.state.pendingDistrict !== this.state.selectedDistrict ||
-           this.state.pendingCity !== this.state.selectedCity;
+           this.state.pendingCity !== this.state.selectedCity ||
+           this.state.pendingMinPrice !== this.state.selectedMinPrice ||
+           this.state.pendingMaxPrice !== this.state.selectedMaxPrice;
   }
 
   // Check if any filters are currently applied
   hasActiveFilters = () => {
     return this.state.selectedCategory !== '' || 
            this.state.selectedDistrict !== '' || 
-           this.state.selectedCity !== '';
+           this.state.selectedCity !== '' ||
+           this.state.selectedMinPrice !== '' ||
+           this.state.selectedMaxPrice !== '' ||
+           this.state.searchQuery !== '' ||
+           this.state.sortBy !== 'default';
   }
 
   getUniqueDistricts = () => {
@@ -135,7 +242,7 @@ export default class Homepage extends Component {
   canCreateListing = () => {
     const isLoggedIn = localStorage.getItem('isLoggedIn') === 'true';
     const userType = localStorage.getItem('userType');
-    return isLoggedIn && userType === 'lister';
+    return isLoggedIn && userType === 'renter';
   }
 
   // Get image path from database or return null for placeholder
@@ -199,16 +306,121 @@ export default class Homepage extends Component {
 
     return (
       <div className="container-fluid mt-4">
+        {/* Available Listings Title - Centered */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="d-flex justify-content-center align-items-center">
+              <h2 className="text-center mb-0">Available Listings</h2>
+              {this.canCreateListing() && (
+                <button 
+                  className="btn btn-primary ms-4"
+                  onClick={() => window.location.href = '/create-listing'}
+                >
+                  <i className="fas fa-plus me-2"></i>Create Your Listing
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Search Bar - Full Width */}
+        <div className="row mb-4">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-body">
+                <div className="input-group">
+                  <span className="input-group-text">
+                    <i className="fas fa-search"></i>
+                  </span>
+                  <input 
+                    type="text"
+                    className="form-control"
+                    placeholder="Search listings by name, description, or category..."
+                    value={this.state.searchQuery}
+                    onChange={this.handleSearchChange}
+                  />
+                  {this.state.searchQuery && (
+                    <button 
+                      className="btn btn-outline-secondary"
+                      onClick={() => this.setState({ searchQuery: '' }, this.filterAndSortListings)}
+                    >
+                      <i className="fas fa-times"></i>
+                    </button>
+                  )}
+                </div>
+                {this.state.searchQuery && (
+                  <small className="text-muted mt-2 d-block">
+                    <i className="fas fa-info-circle me-1"></i>
+                    Searching for: "{this.state.searchQuery}"
+                  </small>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div className="row">
           {/* Left Side - Filters */}
           <div className="col-md-3">
             <div className="card">
               <div className="card-header">
                 <h5 className="mb-0">
-                  <i className="fas fa-filter me-2"></i>Filters
+                  <i className="fas fa-filter me-2"></i>Sort & Filter
                 </h5>
               </div>
               <div className="card-body">
+                {/* Sort By */}
+                <div className="mb-4">
+                  <label className="form-label fw-bold">
+                    <i className="fas fa-sort me-2"></i>Sort By
+                  </label>
+                  <select 
+                    className="form-select"
+                    value={this.state.sortBy}
+                    onChange={this.handleSortChange}
+                  >
+                    <option value="default">📅 Default (Random)</option>
+                    <option value="newest">🆕 Newest First</option>
+                    <option value="oldest">⏰ Oldest First</option>
+                    <option value="price-low-high">💰 Price: Low to High</option>
+                    <option value="price-high-low">💸 Price: High to Low</option>
+                    <option value="name-a-z">🔤 Name: A to Z</option>
+                    <option value="name-z-a">🔤 Name: Z to A</option>
+                  </select>
+                </div>
+
+                <hr />
+
+                {/* Price Filter */}
+                <div className="mb-4">
+                  <label className="form-label fw-bold">
+                    <i className="fas fa-dollar-sign me-2"></i>Price Range (per day)
+                  </label>
+                  <div className="row">
+                    <div className="col-6">
+                      <input 
+                        type="number"
+                        className="form-control"
+                        placeholder="Min $"
+                        value={this.state.pendingMinPrice}
+                        onChange={this.handleMinPriceChange}
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+                    <div className="col-6">
+                      <input 
+                        type="number"
+                        className="form-control"
+                        placeholder="Max $"
+                        value={this.state.pendingMaxPrice}
+                        onChange={this.handleMaxPriceChange}
+                        min="0"
+                        step="1"
+                      />
+                    </div>
+                  </div>
+                </div>
                 {/* Category Filter */}
                 <div className="mb-4">
                   <label className="form-label fw-bold">
@@ -296,18 +508,6 @@ export default class Homepage extends Component {
 
           {/* Right Side - Listings */}
           <div className="col-md-9">
-            <div className="d-flex justify-content-between align-items-center mb-4">
-              <h2>Available Listings</h2>
-              {this.canCreateListing() && (
-                <button 
-                  className="btn btn-primary"
-                  onClick={() => window.location.href = '/create-listing'}
-                >
-                  <i className="fas fa-plus me-2"></i>Create Your Listing
-                </button>
-              )}
-            </div>
-
             {/* Listings Grid */}
             <div className="row">
               {this.state.filteredListings.length === 0 ? (

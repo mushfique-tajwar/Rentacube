@@ -300,12 +300,12 @@ export default class AdminPanel extends Component {
                                 value={editForm.userType}
                                 onChange={(e) => this.handleFormChange('userType', e.target.value)}
                               >
+                                <option value="customer">Customer</option>
                                 <option value="renter">Renter</option>
-                                <option value="lister">Lister</option>
                               </select>
                             ) : (
-                              <span className={`badge ${user.userType === 'lister' ? 'bg-success' : 'bg-primary'}`}>
-                                {user.userType === 'lister' ? '📋 Lister' : '🏠 Renter'}
+                              <span className={`badge ${user.userType === 'renter' ? 'bg-success' : 'bg-primary'}`}>
+                                {user.userType === 'renter' ? '🏠 Renter' : '🛒 Customer'}
                               </span>
                             )}
                           </td>

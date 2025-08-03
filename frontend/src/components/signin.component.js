@@ -52,7 +52,7 @@ export default class SignIn extends Component {
         // Save username, fullName, userType and admin status to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
         localStorage.setItem('fullName', res.data.fullName || '');
-        localStorage.setItem('userType', res.data.userType || 'renter');
+        localStorage.setItem('userType', res.data.userType || 'customer');
         localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
         localStorage.setItem('isLoggedIn', 'true');
         
