@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 const Listing = require('./models/listing.model');
 
-mongoose.connect('mongodb+srv://rutab:rutab@rentacube.f4owsc2.mongodb.net/?retryWrites=true&w=majority&appName=Rentacube');
+mongoose.connect(process.env.ATLAS_URI);
 
 async function updateImages() {
   try {

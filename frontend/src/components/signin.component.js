@@ -55,9 +55,9 @@ export default class SignIn extends Component {
           password: ''
         });
         
-        // Redirect to dashboard after successful sign in
+        // Redirect to homepage after successful sign in
         setTimeout(() => {
-          window.location.href = '/dashboard';
+          window.location.href = '/';
         }, 1500);
       })
       .catch(err => {
