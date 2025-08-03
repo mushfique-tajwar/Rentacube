@@ -1,21 +1,16 @@
 import React, { Component } from 'react';
-import { Link } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
 
-export default class CreateUser extends Component {
+export default class SignIn extends Component {
   constructor(props) {
     super(props);
 
     this.onChangeUsername = this.onChangeUsername.bind(this);
-    this.onChangeEmail = this.onChangeEmail.bind(this);
     this.onChangePassword = this.onChangePassword.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
 
     this.state = {
       username: '',
-      email: '',
       password: '',
       message: '',
       isLoading: false
@@ -25,12 +20,6 @@ export default class CreateUser extends Component {
   onChangeUsername(e) {
     this.setState({
       username: e.target.value
-    });
-  }
-
-  onChangeEmail(e) {
-    this.setState({
-      email: e.target.value
     });
   }
 
@@ -45,44 +34,45 @@ export default class CreateUser extends Component {
 
     this.setState({ isLoading: true, message: '' });
 
-    const user = {
+    const loginData = {
       username: this.state.username,
-      email: this.state.email,
       password: this.state.password
     };
 
-    console.log('Submitting user:', user);
+    console.log('Attempting to sign in:', loginData);
 
-    axios.post('http://localhost:3000/users/add', user)
+    axios.post('http://localhost:3000/users/login', loginData)
       .then(res => {
-        console.log('User created successfully:', res.data);
+        console.log('Sign in successful:', res.data);
         // Save username to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
         localStorage.setItem('isLoggedIn', 'true');
+        
         this.setState({
-          message: 'User created successfully!',
+          message: 'Sign in successful! Redirecting...',
           isLoading: false,
           username: '',
-          email: '',
           password: ''
         });
-        // Redirect to dashboard after successful account creation
+        
+        // Redirect to dashboard after successful sign in
         setTimeout(() => {
           window.location.href = '/dashboard';
         }, 1500);
       })
       .catch(err => {
-        console.error('Error creating user:', err.response?.data || err.message);
+        console.error('Error signing in:', err.response?.data || err.message);
         this.setState({
-          message: `Error: ${err.response?.data || err.message}`,
+          message: `Error: ${err.response?.data || 'Invalid username or password'}`,
           isLoading: false
         });
       });
   }
+
   render() {
     return (
       <div className="container">
-        <h2>Create User</h2>
+        <h2>Sign In</h2>
         {this.state.message && (
           <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
             {this.state.message}
@@ -97,18 +87,6 @@ export default class CreateUser extends Component {
               value={this.state.username}
               onChange={this.onChangeUsername}
               required
-              minLength="3"
-              maxLength="20"
-            />
-          </div>
-          <div className="form-group mb-3">
-            <label className="form-label mb-2">Email:</label>
-            <input 
-              type="email" 
-              className="form-control"
-              value={this.state.email}
-              onChange={this.onChangeEmail}
-              required
             />
           </div>
           <div className="form-group mb-3">
@@ -119,7 +97,6 @@ export default class CreateUser extends Component {
               value={this.state.password}
               onChange={this.onChangePassword}
               required
-              minLength="6"
             />
           </div>
           <button 
@@ -127,7 +104,7 @@ export default class CreateUser extends Component {
             className="btn btn-primary"
             disabled={this.state.isLoading}
           >
-            {this.state.isLoading ? 'Creating User...' : 'Create User'}
+            {this.state.isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
       </div>

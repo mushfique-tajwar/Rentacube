@@ -23,4 +23,28 @@ router.route('/add').post((req, res) => {
         .catch(err => res.status(400).json('Error: ' + err));
 });
 
+router.route('/login').post((req, res) => {
+    const username = req.body.username;
+    const password = req.body.password;
+
+    User.findOne({ username: username })
+        .then(user => {
+            if (!user) {
+                return res.status(400).json('User not found');
+            }
+            
+            // Simple password check (in production, use bcrypt for hashed passwords)
+            if (user.password === password) {
+                res.json({
+                    message: 'Login successful',
+                    username: user.username,
+                    email: user.email
+                });
+            } else {
+                res.status(400).json('Invalid password');
+            }
+        })
+        .catch(err => res.status(400).json('Error: ' + err));
+});
+
 module.exports = router;
