@@ -7,7 +7,10 @@ export default class CreateListing extends Component {
 
     this.onChangeName = this.onChangeName.bind(this);
     this.onChangeDescription = this.onChangeDescription.bind(this);
-    this.onChangePricePerDay = this.onChangePricePerDay.bind(this);
+    this.onChangePriceHourly = this.onChangePriceHourly.bind(this);
+    this.onChangePriceDaily = this.onChangePriceDaily.bind(this);
+    this.onChangePriceMonthly = this.onChangePriceMonthly.bind(this);
+    this.onTogglePricingOption = this.onTogglePricingOption.bind(this);
     this.onChangeDistrict = this.onChangeDistrict.bind(this);
     this.onChangeCity = this.onChangeCity.bind(this);
     this.onChangeCategory = this.onChangeCategory.bind(this);
@@ -17,7 +20,16 @@ export default class CreateListing extends Component {
     this.state = {
       name: '',
       description: '',
-      pricePerDay: '',
+      pricing: {
+        hourly: '',
+        daily: '',
+        monthly: ''
+      },
+      pricingOptions: {
+        showHourly: false,
+        showDaily: false,
+        showMonthly: false
+      },
       district: '',
       city: '',
       category: '',
@@ -73,8 +85,46 @@ export default class CreateListing extends Component {
     this.setState({ description: e.target.value });
   }
 
-  onChangePricePerDay(e) {
-    this.setState({ pricePerDay: e.target.value });
+  onChangePriceHourly(e) {
+    this.setState({ 
+      pricing: { 
+        ...this.state.pricing, 
+        hourly: e.target.value 
+      } 
+    });
+  }
+
+  onChangePriceDaily(e) {
+    this.setState({ 
+      pricing: { 
+        ...this.state.pricing, 
+        daily: e.target.value 
+      } 
+    });
+  }
+
+  onChangePriceMonthly(e) {
+    this.setState({ 
+      pricing: { 
+        ...this.state.pricing, 
+        monthly: e.target.value 
+      } 
+    });
+  }
+
+  onTogglePricingOption(type) {
+    this.setState(prevState => ({
+      pricingOptions: {
+        ...prevState.pricingOptions,
+        [type]: !prevState.pricingOptions[type]
+      },
+      // Clear the price value when hiding the option
+      pricing: {
+        ...prevState.pricing,
+        [type === 'showHourly' ? 'hourly' : type === 'showDaily' ? 'daily' : 'monthly']: 
+          !prevState.pricingOptions[type] ? prevState.pricing[type === 'showHourly' ? 'hourly' : type === 'showDaily' ? 'daily' : 'monthly'] : ''
+      }
+    }));
   }
 
   onChangeDistrict(e) {
@@ -131,6 +181,54 @@ export default class CreateListing extends Component {
       return;
     }
 
+    // Check if at least one pricing option is provided
+    const { hourly, daily, monthly } = this.state.pricing;
+    const { showHourly, showDaily, showMonthly } = this.state.pricingOptions;
+    
+    // Check if at least one pricing option is enabled
+    if (!showHourly && !showDaily && !showMonthly) {
+      this.setState({ message: 'Please enable at least one pricing option (hourly, daily, or monthly).' });
+      return;
+    }
+    
+    // Check if enabled pricing options have values
+    const hasValidPricing = (showHourly && hourly) || (showDaily && daily) || (showMonthly && monthly);
+    if (!hasValidPricing) {
+      this.setState({ message: 'Please provide pricing for at least one enabled pricing option.' });
+      return;
+    }
+
+    // Additional validation for required fields
+    if (!this.state.name.trim()) {
+      this.setState({ message: 'Item name is required.' });
+      return;
+    }
+    
+    if (!this.state.description.trim()) {
+      this.setState({ message: 'Description is required.' });
+      return;
+    }
+    
+    if (!this.state.category) {
+      this.setState({ message: 'Category is required.' });
+      return;
+    }
+    
+    if (!this.state.district) {
+      this.setState({ message: 'District is required.' });
+      return;
+    }
+    
+    if (!this.state.city) {
+      this.setState({ message: 'City is required.' });
+      return;
+    }
+
+    if (!username) {
+      this.setState({ message: 'User not found. Please log in again.' });
+      return;
+    }
+
     // Check if image is provided (now mandatory)
     if (!this.state.image) {
       this.setState({ message: 'Image is required for all listings. Please select an image.' });
@@ -141,9 +239,14 @@ export default class CreateListing extends Component {
 
     // Create FormData for file upload
     const formData = new FormData();
-    formData.append('name', this.state.name);
-    formData.append('description', this.state.description);
-    formData.append('pricePerDay', this.state.pricePerDay);
+    formData.append('name', this.state.name.trim());
+    formData.append('description', this.state.description.trim());
+    
+    // Add pricing data
+    if (showHourly && hourly) formData.append('pricingHourly', hourly);
+    if (showDaily && daily) formData.append('pricingDaily', daily);
+    if (showMonthly && monthly) formData.append('pricingMonthly', monthly);
+    
     formData.append('district', this.state.district);
     formData.append('city', this.state.city);
     formData.append('category', this.state.category);
@@ -151,6 +254,23 @@ export default class CreateListing extends Component {
     formData.append('image', this.state.image); // Image is now mandatory
 
     console.log('Creating listing...');
+    console.log('Form data being sent:');
+    console.log('name:', this.state.name.trim());
+    console.log('description:', this.state.description.trim());
+    console.log('district:', this.state.district);
+    console.log('city:', this.state.city);
+    console.log('category:', this.state.category);
+    console.log('owner:', username);
+    console.log('showHourly:', showHourly, 'hourly value:', hourly);
+    console.log('showDaily:', showDaily, 'daily value:', daily);
+    console.log('showMonthly:', showMonthly, 'monthly value:', monthly);
+    console.log('image:', this.state.image?.name);
+    
+    // Debug: Log all FormData entries
+    console.log('FormData entries:');
+    for (let [key, value] of formData.entries()) {
+      console.log(key + ':', value);
+    }
 
     axios.post('http://localhost:3000/listings/create', formData, {
       headers: {
@@ -159,12 +279,23 @@ export default class CreateListing extends Component {
     })
       .then(res => {
         console.log('Listing created successfully:', res.data);
+        
+        // Show success message
         this.setState({
-          message: 'Listing created successfully!',
+          message: '🎉 Listing created successfully! Redirecting to homepage...',
           isLoading: false,
           name: '',
           description: '',
-          pricePerDay: '',
+          pricing: {
+            hourly: '',
+            daily: '',
+            monthly: ''
+          },
+          pricingOptions: {
+            showHourly: false,
+            showDaily: false,
+            showMonthly: false
+          },
           district: '',
           city: '',
           category: '',
@@ -175,10 +306,11 @@ export default class CreateListing extends Component {
         // Reset the file input
         document.getElementById('imageInput').value = '';
         
-        // Redirect to homepage after successful creation
-        setTimeout(() => {
-          window.location.href = '/';
-        }, 2000);
+        // Show browser alert for confirmation
+        alert('🎉 Success! Your listing has been created successfully and is now live on Rentacube!');
+        
+        // Redirect to homepage immediately after alert is dismissed
+        window.location.replace('/');
       })
       .catch(err => {
         console.error('Error creating listing:', err.response?.data || err.message);
@@ -199,7 +331,7 @@ export default class CreateListing extends Component {
       <div className="container mt-4">
         <div className="row justify-content-center">
           <div className="col-md-8">
-            <div className="card">
+            <div className="card shadow-lg">
               <div className="card-header">
                 <h3 className="mb-0">
                   <i className="fas fa-plus-circle me-2"></i>Create Your Listing
@@ -207,8 +339,16 @@ export default class CreateListing extends Component {
               </div>
               <div className="card-body">
                 {this.state.message && (
-                  <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
-                    {this.state.message}
+                  <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'} ${this.state.message.includes('🎉') ? 'alert-success border-success' : ''}`}>
+                    <div className="d-flex align-items-center">
+                      {this.state.message.includes('🎉') && (
+                        <i className="fas fa-check-circle me-2 text-success"></i>
+                      )}
+                      {this.state.message.includes('Error') && (
+                        <i className="fas fa-exclamation-triangle me-2"></i>
+                      )}
+                      <span>{this.state.message}</span>
+                    </div>
                   </div>
                 )}
                 
@@ -247,24 +387,124 @@ export default class CreateListing extends Component {
                     />
                   </div>
 
-                  {/* Price */}
+                  {/* Pricing */}
                   <div className="form-group mb-3">
                     <label className="form-label fw-bold">
-                      <i className="fas fa-dollar-sign me-2"></i>Price per Day
+                      <i className="fas fa-dollar-sign me-2"></i>Pricing Options
                     </label>
-                    <div className="input-group">
-                      <span className="input-group-text">$</span>
-                      <input 
-                        type="number" 
-                        className="form-control"
-                        value={this.state.pricePerDay}
-                        onChange={this.onChangePricePerDay}
-                        required
-                        min="1"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
+                    <p className="text-muted small">Select which pricing options you want to offer:</p>
+                    
+                    {/* Pricing Option Toggles */}
+                    <div className="row mb-3">
+                      <div className="col-md-4">
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id="hourlyCheck"
+                            checked={this.state.pricingOptions.showHourly}
+                            onChange={() => this.onTogglePricingOption('showHourly')}
+                          />
+                          <label className="form-check-label" htmlFor="hourlyCheck">
+                            Hourly Rate
+                          </label>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id="dailyCheck"
+                            checked={this.state.pricingOptions.showDaily}
+                            onChange={() => this.onTogglePricingOption('showDaily')}
+                          />
+                          <label className="form-check-label" htmlFor="dailyCheck">
+                            Daily Rate
+                          </label>
+                        </div>
+                      </div>
+                      <div className="col-md-4">
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id="monthlyCheck"
+                            checked={this.state.pricingOptions.showMonthly}
+                            onChange={() => this.onTogglePricingOption('showMonthly')}
+                          />
+                          <label className="form-check-label" htmlFor="monthlyCheck">
+                            Monthly Rate
+                          </label>
+                        </div>
+                      </div>
                     </div>
+                    
+                    {/* Hourly Price */}
+                    {this.state.pricingOptions.showHourly && (
+                      <div className="row mb-2">
+                        <div className="col-md-4">
+                          <label className="form-label">Hourly Rate</label>
+                          <div className="input-group">
+                            <span className="input-group-text">$</span>
+                            <input 
+                              type="number" 
+                              className="form-control"
+                              value={this.state.pricing.hourly}
+                              onChange={this.onChangePriceHourly}
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                            />
+                            <span className="input-group-text">/hour</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                      
+                    {/* Daily Price */}
+                    {this.state.pricingOptions.showDaily && (
+                      <div className="row mb-2">
+                        <div className="col-md-4">
+                          <label className="form-label">Daily Rate</label>
+                          <div className="input-group">
+                            <span className="input-group-text">$</span>
+                            <input 
+                              type="number" 
+                              className="form-control"
+                              value={this.state.pricing.daily}
+                              onChange={this.onChangePriceDaily}
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                            />
+                            <span className="input-group-text">/day</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                      
+                    {/* Monthly Price */}
+                    {this.state.pricingOptions.showMonthly && (
+                      <div className="row mb-2">
+                        <div className="col-md-4">
+                          <label className="form-label">Monthly Rate</label>
+                          <div className="input-group">
+                            <span className="input-group-text">$</span>
+                            <input 
+                              type="number" 
+                              className="form-control"
+                              value={this.state.pricing.monthly}
+                              onChange={this.onChangePriceMonthly}
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                            />
+                            <span className="input-group-text">/month</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Category */}

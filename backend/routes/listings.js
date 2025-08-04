@@ -81,18 +81,38 @@ router.route('/:id').get((req, res) => {
 
 // POST - Add new listing with image upload
 router.route('/create').post(upload.single('image'), (req, res) => {
+    console.log('=== Backend Debug ===');
+    console.log('req.body:', req.body);
+    console.log('req.file:', req.file ? { filename: req.file.filename, size: req.file.size } : 'No file');
+    
     const {
         name,
         description,
-        pricePerDay,
+        pricingHourly,
+        pricingDaily,
+        pricingMonthly,
         district,
         city,
         category,
         owner
     } = req.body;
 
-    // Validation
-    if (!name || !description || !pricePerDay || !district || !city || !category || !owner) {
+    console.log('Extracted fields:');
+    console.log('name:', JSON.stringify(name));
+    console.log('description:', JSON.stringify(description));
+    console.log('district:', JSON.stringify(district));
+    console.log('city:', JSON.stringify(city));
+    console.log('category:', JSON.stringify(category));
+    console.log('owner:', JSON.stringify(owner));
+    console.log('pricingHourly:', JSON.stringify(pricingHourly));
+    console.log('pricingDaily:', JSON.stringify(pricingDaily));
+    console.log('pricingMonthly:', JSON.stringify(pricingMonthly));
+    console.log('=== End Debug ===');
+
+    // Validation - check for empty strings and undefined values
+    if (!name || !name.trim() || !description || !description.trim() || 
+        !district || !city || !category || !owner || !owner.trim()) {
+        console.log('Validation failed - missing required fields');
         return res.status(400).json('All required fields must be provided');
     }
 
@@ -101,10 +121,36 @@ router.route('/create').post(upload.single('image'), (req, res) => {
         return res.status(400).json('Image is required for all listings');
     }
 
-    if (pricePerDay <= 0) {
-        return res.status(400).json('Price per day must be greater than 0');
+    // At least one pricing option must be provided
+    if (!pricingHourly && !pricingDaily && !pricingMonthly) {
+        return res.status(400).json('At least one pricing option (hourly, daily, or monthly) must be provided');
     }
 
+    // Validate pricing values - build pricing object
+    const pricing = {};
+    if (pricingHourly) {
+        const hourly = Number(pricingHourly);
+        if (isNaN(hourly) || hourly <= 0) {
+            return res.status(400).json('Hourly price must be a valid number greater than 0');
+        }
+        pricing.hourly = hourly;
+    }
+    if (pricingDaily) {
+        const daily = Number(pricingDaily);
+        if (isNaN(daily) || daily <= 0) {
+            return res.status(400).json('Daily price must be a valid number greater than 0');
+        }
+        pricing.daily = daily;
+    }
+    if (pricingMonthly) {
+        const monthly = Number(pricingMonthly);
+        if (isNaN(monthly) || monthly <= 0) {
+            return res.status(400).json('Monthly price must be a valid number greater than 0');
+        }
+        pricing.monthly = monthly;
+    }
+
+    // Validate category
     const validCategories = ['vehicles', 'electronics', 'clothing', 'home', 'property', 'sports', 'services'];
     if (!validCategories.includes(category.toLowerCase())) {
         return res.status(400).json('Invalid category');
@@ -113,11 +159,14 @@ router.route('/create').post(upload.single('image'), (req, res) => {
     // Handle image - now mandatory
     const imageFilename = req.file.filename;
 
+    // Create location string for database requirement
+    const location = `${city.trim()}, ${district.trim()}`;
+
     const newListing = new Listing({
         name: name.trim(),
         description: description.trim(),
-        pricePerDay: Number(pricePerDay),
-        location: `${city.trim()}, ${district.trim()}`, // Backward compatibility
+        pricing: pricing,
+        location: location,
         district: district.trim(),
         city: city.trim(),
         category: category.toLowerCase(),
@@ -131,6 +180,7 @@ router.route('/create').post(upload.single('image'), (req, res) => {
             listing: newListing
         }))
         .catch(err => {
+            console.error('Database save error:', err);
             // If there was an error saving to database, delete the uploaded file
             if (req.file) {
                 fs.unlink(req.file.path, (unlinkErr) => {
@@ -154,13 +204,21 @@ router.route('/add').post((req, res) => {
     } = req.body;
 
     // Validation
-    if (!name || !description || !pricePerDay || !location || !category || !owner) {
-        return res.status(400).json('All required fields must be provided');
+    if (!name || !description || !location || !category || !owner) {
+        return res.status(400).json('All required fields must be provided!!!');
     }
 
-    if (pricePerDay <= 0) {
-        return res.status(400).json('Price per day must be greater than 0');
-    }
+    // if (pricePerDay <= 0) {
+    //     return res.status(400).json('Price per day must be greater than 0');
+    // }
+
+    // if (pricePerHour <= 0) {
+    //     return res.status(400).json('Price per hour must be greater than 0');
+    // }
+
+    // if (pricePerMonth <= 0) {
+    //     return res.status(400).json('Price per month must be greater than 0');
+    // }
 
     const validCategories = ['vehicles', 'electronics', 'clothing', 'home', 'property', 'sports', 'services'];
     if (!validCategories.includes(category.toLowerCase())) {
@@ -198,8 +256,31 @@ router.route('/update/:id').put((req, res) => {
             // Update fields
             listing.name = req.body.name || listing.name;
             listing.description = req.body.description || listing.description;
-            listing.pricePerDay = req.body.pricePerDay || listing.pricePerDay;
-            listing.location = req.body.location || listing.location;
+            
+            // Update pricing structure
+            if (req.body.pricingHourly !== undefined || req.body.pricingDaily !== undefined || req.body.pricingMonthly !== undefined) {
+                listing.pricing = listing.pricing || {};
+                
+                if (req.body.pricingHourly !== undefined) {
+                    listing.pricing.hourly = req.body.pricingHourly ? Number(req.body.pricingHourly) : null;
+                }
+                if (req.body.pricingDaily !== undefined) {
+                    listing.pricing.daily = req.body.pricingDaily ? Number(req.body.pricingDaily) : null;
+                }
+                if (req.body.pricingMonthly !== undefined) {
+                    listing.pricing.monthly = req.body.pricingMonthly ? Number(req.body.pricingMonthly) : null;
+                }
+            }
+            
+            // Update location if district or city changed
+            if (req.body.district || req.body.city) {
+                const newDistrict = req.body.district || listing.district;
+                const newCity = req.body.city || listing.city;
+                listing.location = `${newCity}, ${newDistrict}`;
+                listing.district = newDistrict;
+                listing.city = newCity;
+            }
+            
             listing.category = req.body.category || listing.category;
             listing.image = req.body.image !== undefined ? req.body.image : listing.image;
             listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
@@ -270,80 +351,6 @@ router.route('/owner/:owner').get((req, res) => {
         .catch(err => res.status(400).json('Error: ' + err));
 });
 
-// POST - Add sample data (for testing purposes)
-router.route('/seed').post((req, res) => {
-    const sampleListings = [
-        {
-            name: 'Modern Electric Car',
-            description: 'Clean and efficient electric vehicle perfect for city driving. Features autopilot and premium sound system.',
-            pricePerDay: 50,
-            location: 'New York',
-            category: 'vehicles',
-            owner: 'testuser'
-        },
-        {
-            name: 'Professional Camera Kit',
-            description: 'High-end DSLR camera with multiple lenses and accessories. Perfect for professional photography.',
-            pricePerDay: 30,
-            location: 'Los Angeles',
-            category: 'electronics',
-            owner: 'testuser'
-        },
-        {
-            name: 'Designer Wedding Dress',
-            description: 'Elegant designer wedding dress, size 8. Dry cleaned and ready for your special day.',
-            pricePerDay: 200,
-            location: 'Chicago',
-            category: 'clothing',
-            owner: 'testuser'
-        },
-        {
-            name: 'Luxury Apartment Downtown',
-            description: 'Beautiful 2-bedroom apartment with ocean view. Full kitchen, WiFi, and parking included.',
-            pricePerDay: 150,
-            location: 'Miami',
-            category: 'property',
-            owner: 'testuser'
-        },
-        {
-            name: 'Mountain Bike',
-            description: 'High-quality mountain bike perfect for trails and city riding. Helmet included.',
-            pricePerDay: 25,
-            location: 'Denver',
-            category: 'sports',
-            owner: 'testuser'
-        },
-        {
-            name: 'Wedding Photography Service',
-            description: 'Professional wedding photography with edited photos delivered within 2 weeks.',
-            pricePerDay: 500,
-            location: 'San Francisco',
-            category: 'services',
-            owner: 'testuser'
-        },
-        {
-            name: 'Vintage Home Decor Set',
-            description: 'Beautiful vintage furniture and decor pieces perfect for events and staging.',
-            pricePerDay: 40,
-            location: 'Boston',
-            category: 'home',
-            owner: 'testuser'
-        },
-        {
-            name: 'Gaming Laptop',
-            description: 'High-performance gaming laptop with latest graphics card. Perfect for work or gaming.',
-            pricePerDay: 45,
-            location: 'Seattle',
-            category: 'electronics',
-            owner: 'testuser'
-        }
-    ];
-
-    Listing.insertMany(sampleListings)
-        .then(() => res.json('Sample listings added successfully!'))
-        .catch(err => res.status(400).json('Error: ' + err));
-});
-
 // Admin routes - Update any listing
 router.route('/admin/update/:id').put((req, res) => {
     // Simple admin check (in production, use proper JWT authentication)
@@ -360,10 +367,31 @@ router.route('/admin/update/:id').put((req, res) => {
             // Update fields
             listing.name = req.body.name || listing.name;
             listing.description = req.body.description || listing.description;
-            listing.pricePerDay = req.body.pricePerDay || listing.pricePerDay;
-            listing.district = req.body.district || listing.district;
-            listing.city = req.body.city || listing.city;
-            listing.location = req.body.location || listing.location;
+            
+            // Update pricing structure
+            if (req.body.pricingHourly !== undefined || req.body.pricingDaily !== undefined || req.body.pricingMonthly !== undefined) {
+                listing.pricing = listing.pricing || {};
+                
+                if (req.body.pricingHourly !== undefined) {
+                    listing.pricing.hourly = req.body.pricingHourly ? Number(req.body.pricingHourly) : null;
+                }
+                if (req.body.pricingDaily !== undefined) {
+                    listing.pricing.daily = req.body.pricingDaily ? Number(req.body.pricingDaily) : null;
+                }
+                if (req.body.pricingMonthly !== undefined) {
+                    listing.pricing.monthly = req.body.pricingMonthly ? Number(req.body.pricingMonthly) : null;
+                }
+            }
+            
+            // Update location if district or city changed
+            if (req.body.district || req.body.city) {
+                const newDistrict = req.body.district || listing.district;
+                const newCity = req.body.city || listing.city;
+                listing.location = `${newCity}, ${newDistrict}`;
+                listing.district = newDistrict;
+                listing.city = newCity;
+            }
+            
             listing.category = req.body.category || listing.category;
             listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
             

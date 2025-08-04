@@ -17,10 +17,28 @@ const listingSchema = new Schema({
         minlength: 10,
         maxlength: 1000
     },
+    pricing: {
+        hourly: {
+            type: Number,
+            min: 0,
+            default: null
+        },
+        daily: {
+            type: Number,
+            min: 0,
+            default: null
+        },
+        monthly: {
+            type: Number,
+            min: 0,
+            default: null
+        }
+    },
+    // Deprecated field - will be removed in future versions
     pricePerDay: {
         type: Number,
-        required: true,
-        min: 0
+        min: 0,
+        default: null
     },
     location: {
         type: String,

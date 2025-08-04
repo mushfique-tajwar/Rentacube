@@ -150,14 +150,12 @@ export default class Homepage extends Component {
 
     // Apply price filters
     if (this.state.selectedMinPrice) {
-      filtered = filtered.filter(listing => listing.pricePerDay >= parseFloat(this.state.selectedMinPrice));
+      filtered = filtered.filter(listing => this.getComparablePrice(listing) >= parseFloat(this.state.selectedMinPrice));
     }
-
+    
     if (this.state.selectedMaxPrice) {
-      filtered = filtered.filter(listing => listing.pricePerDay <= parseFloat(this.state.selectedMaxPrice));
-    }
-
-    // Apply sorting
+      filtered = filtered.filter(listing => this.getComparablePrice(listing) <= parseFloat(this.state.selectedMaxPrice));
+    }    // Apply sorting
     switch (this.state.sortBy) {
       case 'newest':
         filtered.sort((a, b) => new Date(b.createdAt || b._id) - new Date(a.createdAt || a._id));
@@ -166,10 +164,10 @@ export default class Homepage extends Component {
         filtered.sort((a, b) => new Date(a.createdAt || a._id) - new Date(b.createdAt || b._id));
         break;
       case 'price-low-high':
-        filtered.sort((a, b) => a.pricePerDay - b.pricePerDay);
+        filtered.sort((a, b) => this.getComparablePrice(a) - this.getComparablePrice(b));
         break;
       case 'price-high-low':
-        filtered.sort((a, b) => b.pricePerDay - a.pricePerDay);
+        filtered.sort((a, b) => this.getComparablePrice(b) - this.getComparablePrice(a));
         break;
       case 'name-a-z':
         filtered.sort((a, b) => a.name.localeCompare(b.name));
@@ -273,6 +271,42 @@ export default class Homepage extends Component {
     }));
   }
 
+  // Helper function to format pricing display
+  formatPricing = (listing) => {
+    const pricing = listing.pricing || {};
+    const prices = [];
+    
+    if (pricing.hourly) {
+      prices.push(`$${pricing.hourly}/hr`);
+    }
+    if (pricing.daily) {
+      prices.push(`$${pricing.daily}/day`);
+    }
+    if (pricing.monthly) {
+      prices.push(`$${pricing.monthly}/mo`);
+    }
+    
+    // Fallback to legacy pricePerDay if no pricing structure exists
+    if (prices.length === 0 && listing.pricePerDay) {
+      prices.push(`$${listing.pricePerDay}/day`);
+    }
+    
+    return prices.length > 0 ? prices.join(' • ') : 'Price on request';
+  }
+
+  // Helper function to get a comparable price for filtering (use daily rate as base)
+  getComparablePrice = (listing) => {
+    const pricing = listing.pricing || {};
+    
+    // Priority: daily > hourly*24 > monthly/30 > legacy pricePerDay
+    if (pricing.daily) return pricing.daily;
+    if (pricing.hourly) return pricing.hourly * 24; // Convert hourly to daily
+    if (pricing.monthly) return pricing.monthly / 30; // Convert monthly to daily
+    if (listing.pricePerDay) return listing.pricePerDay;
+    
+    return 0; // If no pricing is available
+  }
+
   render() {
     if (this.state.isLoading) {
       return (
@@ -326,7 +360,7 @@ export default class Homepage extends Component {
         {/* Search Bar - Full Width */}
         <div className="row mb-4">
           <div className="col-12">
-            <div className="card">
+            <div className="card search-card">
               <div className="card-body">
                 <div className="input-group">
                   <span className="input-group-text">
@@ -362,7 +396,7 @@ export default class Homepage extends Component {
         <div className="row">
           {/* Left Side - Filters */}
           <div className="col-md-3">
-            <div className="card">
+            <div className="card filter-card">
               <div className="card-header">
                 <h5 className="mb-0">
                   <i className="fas fa-filter me-2"></i>Sort & Filter
@@ -394,8 +428,11 @@ export default class Homepage extends Component {
                 {/* Price Filter */}
                 <div className="mb-4">
                   <label className="form-label fw-bold">
-                    <i className="fas fa-dollar-sign me-2"></i>Price Range (per day)
+                    <i className="fas fa-dollar-sign me-2"></i>Price Range (daily equivalent)
                   </label>
+                  <small className="text-muted d-block mb-2">
+                    Filter by daily rate or equivalent (hourly×24, monthly÷30)
+                  </small>
                   <div className="row">
                     <div className="col-6">
                       <input 
@@ -520,7 +557,7 @@ export default class Homepage extends Component {
               ) : (
                 this.state.filteredListings.map(listing => (
                   <div key={listing._id} className="col-md-6 col-lg-4 mb-4">
-                    <div className="card h-100">
+                    <div className="card listing-card h-100">
                       {/* Image or Placeholder */}
                       <div className="position-relative" style={{ paddingTop: '100%', overflow: 'hidden' }}>
                         {this.getImagePath(listing) ? (
@@ -590,16 +627,13 @@ export default class Homepage extends Component {
                             {listing.category.charAt(0).toUpperCase() + listing.category.slice(1)}
                           </span>
                           <span className="badge bg-secondary me-2">
-                            <i className="fas fa-map-marker-alt me-1"></i>{listing.district}
-                          </span>
-                          <span className="badge bg-info">
-                            <i className="fas fa-city me-1"></i>{listing.city}
+                            <i className="fas fa-map-marker-alt me-1"></i>{listing.city}, {listing.district}
                           </span>
                         </div>
                         
                         {/* Price */}
                         <div className="mb-2">
-                          <span className="h5 text-success">${listing.pricePerDay}/day</span>
+                          <span className="h5 text-success">{this.formatPricing(listing)}</span>
                         </div>
                         
                         {/* Description */}

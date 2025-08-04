@@ -124,6 +124,7 @@ export default class AdminPanel extends Component {
   }
 
   handleEditListing = (listing) => {
+    const pricing = listing.pricing || {};
     this.setState({
       editingListing: listing._id,
       editForm: {
@@ -131,6 +132,9 @@ export default class AdminPanel extends Component {
         name: listing.name,
         description: listing.description,
         pricePerDay: listing.pricePerDay,
+        pricingHourly: pricing.hourly || '',
+        pricingDaily: pricing.daily || '',
+        pricingMonthly: pricing.monthly || '',
         district: listing.district,
         city: listing.city,
         category: listing.category,
@@ -173,7 +177,7 @@ export default class AdminPanel extends Component {
   handleUpdateListing = () => {
     const { editingListing, editForm } = this.state;
     
-    axios.put(`http://localhost:3000/listings/admin/update/${editingListing}`, {
+    const updateData = {
       name: editForm.name,
       description: editForm.description,
       pricePerDay: editForm.pricePerDay,
@@ -182,7 +186,14 @@ export default class AdminPanel extends Component {
       category: editForm.category,
       isActive: editForm.isActive,
       adminUsername: 'admin'
-    })
+    };
+    
+    // Add new pricing fields if they have values
+    if (editForm.pricingHourly) updateData.pricingHourly = editForm.pricingHourly;
+    if (editForm.pricingDaily) updateData.pricingDaily = editForm.pricingDaily;
+    if (editForm.pricingMonthly) updateData.pricingMonthly = editForm.pricingMonthly;
+    
+    axios.put(`http://localhost:3000/listings/admin/update/${editingListing}`, updateData)
       .then(() => {
         this.setState({ 
           message: 'Listing updated successfully!', 
@@ -193,6 +204,29 @@ export default class AdminPanel extends Component {
       .catch(error => {
         this.setState({ message: 'Error updating listing: ' + (error.response?.data || error.message) });
       });
+  }
+
+  // Helper function to format pricing display
+  formatPricing = (listing) => {
+    const pricing = listing.pricing || {};
+    const prices = [];
+    
+    if (pricing.hourly) {
+      prices.push(`$${pricing.hourly}/hr`);
+    }
+    if (pricing.daily) {
+      prices.push(`$${pricing.daily}/day`);
+    }
+    if (pricing.monthly) {
+      prices.push(`$${pricing.monthly}/mo`);
+    }
+    
+    // Fallback to legacy pricePerDay if no pricing structure exists
+    if (prices.length === 0 && listing.pricePerDay) {
+      prices.push(`$${listing.pricePerDay}/day`);
+    }
+    
+    return prices.length > 0 ? prices.join(', ') : 'Price on request';
   }
 
   render() {
@@ -242,8 +276,10 @@ export default class AdminPanel extends Component {
                   </div>
                 </div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-striped">
+                <div className="card shadow">
+                  <div className="card-body">
+                    <div className="table-responsive">
+                      <table className="table table-striped">
                     <thead>
                       <tr>
                         <th>Username</th>
@@ -349,6 +385,8 @@ export default class AdminPanel extends Component {
                       ))}
                     </tbody>
                   </table>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -367,8 +405,10 @@ export default class AdminPanel extends Component {
                   </div>
                 </div>
               ) : (
-                <div className="table-responsive">
-                  <table className="table table-striped">
+                <div className="card shadow">
+                  <div className="card-body">
+                    <div className="table-responsive">
+                      <table className="table table-striped">
                     <thead>
                       <tr>
                         <th>Name</th>
@@ -420,14 +460,42 @@ export default class AdminPanel extends Component {
                           </td>
                           <td>
                             {editingListing === listing._id ? (
-                              <input 
-                                type="number" 
-                                className="form-control form-control-sm"
-                                value={editForm.pricePerDay}
-                                onChange={(e) => this.handleFormChange('pricePerDay', e.target.value)}
-                              />
+                              <div>
+                                <div className="row g-1">
+                                  <div className="col-4">
+                                    <input 
+                                      type="number" 
+                                      className="form-control form-control-sm"
+                                      placeholder="Hourly"
+                                      value={editForm.pricingHourly || ''}
+                                      onChange={(e) => this.handleFormChange('pricingHourly', e.target.value)}
+                                    />
+                                    <small className="text-muted">$/hr</small>
+                                  </div>
+                                  <div className="col-4">
+                                    <input 
+                                      type="number" 
+                                      className="form-control form-control-sm"
+                                      placeholder="Daily"
+                                      value={editForm.pricingDaily || ''}
+                                      onChange={(e) => this.handleFormChange('pricingDaily', e.target.value)}
+                                    />
+                                    <small className="text-muted">$/day</small>
+                                  </div>
+                                  <div className="col-4">
+                                    <input 
+                                      type="number" 
+                                      className="form-control form-control-sm"
+                                      placeholder="Monthly"
+                                      value={editForm.pricingMonthly || ''}
+                                      onChange={(e) => this.handleFormChange('pricingMonthly', e.target.value)}
+                                    />
+                                    <small className="text-muted">$/mo</small>
+                                  </div>
+                                </div>
+                              </div>
                             ) : (
-                              `$${listing.pricePerDay}`
+                              this.formatPricing(listing)
                             )}
                           </td>
                           <td>
@@ -506,6 +574,8 @@ export default class AdminPanel extends Component {
                       ))}
                     </tbody>
                   </table>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>

@@ -75,7 +75,7 @@ export default class Dashboard extends Component {
   }
 
   renderProfile = () => (
-    <div className="card">
+    <div className="card shadow">
       <div className="card-header">
         <h5>User Profile</h5>
       </div>
@@ -102,7 +102,7 @@ export default class Dashboard extends Component {
   renderListingsAndBookings = () => (
     <div className="row">
       <div className="col-md-6">
-        <div className="card">
+        <div className="card shadow">
           <div className="card-header">
             <h5>My Listings</h5>
           </div>
@@ -132,7 +132,7 @@ export default class Dashboard extends Component {
         </div>
       </div>
       <div className="col-md-6">
-        <div className="card">
+        <div className="card shadow">
           <div className="card-header">
             <h5>My Bookings</h5>
           </div>
@@ -166,7 +166,7 @@ export default class Dashboard extends Component {
   renderAnalytics = () => (
     <div className="row">
       <div className="col-md-3">
-        <div className="card bg-primary text-white">
+        <div className="card bg-primary text-white shadow">
           <div className="card-body text-center">
             <h3>{this.state.analytics.totalViews}</h3>
             <p className="mb-0">Total Views</p>
@@ -174,7 +174,7 @@ export default class Dashboard extends Component {
         </div>
       </div>
       <div className="col-md-3">
-        <div className="card bg-success text-white">
+        <div className="card bg-success text-white shadow">
           <div className="card-body text-center">
             <h3>${this.state.analytics.totalEarnings}</h3>
             <p className="mb-0">Total Earnings</p>
@@ -182,7 +182,7 @@ export default class Dashboard extends Component {
         </div>
       </div>
       <div className="col-md-3">
-        <div className="card bg-info text-white">
+        <div className="card bg-info text-white shadow">
           <div className="card-body text-center">
             <h3>{this.state.analytics.activeListings}</h3>
             <p className="mb-0">Active Listings</p>
@@ -190,7 +190,7 @@ export default class Dashboard extends Component {
         </div>
       </div>
       <div className="col-md-3">
-        <div className="card bg-warning text-white">
+        <div className="card bg-warning text-white shadow">
           <div className="card-body text-center">
             <h3>{this.state.analytics.completedBookings}</h3>
             <p className="mb-0">Completed Bookings</p>
@@ -201,7 +201,7 @@ export default class Dashboard extends Component {
   )
 
   renderSettings = () => (
-    <div className="card">
+    <div className="card shadow">
       <div className="card-header">
         <h5>Personal Settings</h5>
       </div>

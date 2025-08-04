@@ -59,6 +59,45 @@ html, body {
   border-radius: 8px;
 }
 
+/* Enhanced card shadows for better visual appeal */
+.card {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: none;
+  transition: box-shadow 0.3s ease, transform 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  transform: translateY(-2px);
+}
+
+/* Special styling for listing cards */
+.listing-card {
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  border-radius: 10px;
+  overflow: hidden;
+  transition: all 0.3s ease;
+}
+
+.listing-card:hover {
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+  transform: translateY(-4px);
+}
+
+/* Enhanced shadows for filter cards */
+.filter-card {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  border: none;
+}
+
+/* Enhanced shadows for search cards */
+.search-card {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+  border: none;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);
