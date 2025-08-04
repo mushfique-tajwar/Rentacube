@@ -106,14 +106,16 @@ export default class CreateUser extends Component {
   }
   render() {
     return (
-      <div className="container">
-        <h2>Create User</h2>
-        {this.state.message && (
-          <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
-            {this.state.message}
-          </div>
-        )}
-        <form onSubmit={this.onSubmit}>
+      <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
+        <div className="card shadow-lg" style={{ width: '100%', maxWidth: '500px' }}>
+          <div className="card-body">
+            <h2 className="text-center mb-4">Create User</h2>
+            {this.state.message && (
+              <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
+                {this.state.message}
+              </div>
+            )}
+            <form onSubmit={this.onSubmit}>
           <div className="form-group mb-3">
             <label className="form-label mb-2">Username:</label>
             <input 
@@ -183,14 +185,16 @@ export default class CreateUser extends Component {
             className="btn btn-primary"
             disabled={this.state.isLoading}
           >
-            {this.state.isLoading ? 'Creating User...' : 'Create User'}
-          </button>
-        </form>
-        
-        <div className="mt-3 text-center">
-          <p>Already have an account? <Link to="/signin">Sign in here</Link></p>
+              {this.state.isLoading ? 'Creating User...' : 'Create User'}
+            </button>
+          </form>
+          
+          <div className="mt-3 text-center">
+            <p>Already have an account? <Link to="/signin">Sign in here</Link></p>
+          </div>
         </div>
       </div>
+    </div>
     );
   }
 }

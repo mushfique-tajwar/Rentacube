@@ -305,7 +305,7 @@ export default class Homepage extends Component {
     }
 
     return (
-      <div className="container-fluid mt-4">
+      <div className="container-fluid mt-4 mb-5 pb-4">
         {/* Available Listings Title - Centered */}
         <div className="row mb-4">
           <div className="col-12">

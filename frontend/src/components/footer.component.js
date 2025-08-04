@@ -39,7 +39,7 @@ export default class Footer extends Component {
           <hr className="my-4" />
           <div className="row">
             <div className="col-md-12 text-center">
-              <p className="mb-0 text-muted">&copy; 2025 Rentacube. All rights reserved.</p>
+              <p className="mb-0">&copy; 2025 Rentacube. All rights reserved.</p>
             </div>
           </div>
         </div>

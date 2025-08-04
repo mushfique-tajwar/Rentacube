@@ -345,7 +345,7 @@ export default class CreateListing extends Component {
                     </div>
                     {this.state.imageSizeError && (
                       <div className="invalid-feedback">
-                        File size must be less than 150KB. Please choose a smaller image or compress it.
+                        File size must be less than 150KB. Please choose a smaller image or compress it. Square images work best.
                       </div>
                     )}
                     {!this.state.image && !this.state.imageSizeError && (

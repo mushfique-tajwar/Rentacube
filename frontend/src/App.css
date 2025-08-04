@@ -41,6 +41,24 @@ html, body {
   flex-grow: 1 !important;
 }
 
+/* Add space between main content and footer - but not for navbar */
+.container-fluid:not(.navbar .container-fluid) {
+  margin-bottom: 2rem;
+}
+
+/* Centered form styling for auth pages */
+.auth-form-container {
+  min-height: calc(100vh - 200px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-form-card {
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  border-radius: 8px;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

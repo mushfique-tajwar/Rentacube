@@ -90,14 +90,16 @@ export default class SignIn extends Component {
 
   render() {
     return (
-      <div className="container">
-        <h2>Sign In</h2>
-        {this.state.message && (
-          <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
-            {this.state.message}
-          </div>
-        )}
-        <form onSubmit={this.onSubmit}>
+      <div className="container d-flex justify-content-center align-items-center" style={{ minHeight: 'calc(100vh - 200px)' }}>
+        <div className="card shadow-lg" style={{ width: '100%', maxWidth: '400px' }}>
+          <div className="card-body">
+            <h2 className="text-center mb-4">Sign In</h2>
+            {this.state.message && (
+              <div className={`alert ${this.state.message.includes('Error') ? 'alert-danger' : 'alert-success'}`}>
+                {this.state.message}
+              </div>
+            )}
+            <form onSubmit={this.onSubmit}>
           <div className="form-group mb-3">
             <label className="form-label mb-2">Username:</label>
             <input 
@@ -123,14 +125,16 @@ export default class SignIn extends Component {
             className="btn btn-primary"
             disabled={this.state.isLoading}
           >
-            {this.state.isLoading ? 'Signing In...' : 'Sign In'}
-          </button>
-        </form>
-        
-        <div className="mt-3 text-center">
-          <p>Don't have an account? <Link to="/signup">Sign up here</Link></p>
+              {this.state.isLoading ? 'Signing In...' : 'Sign In'}
+            </button>
+          </form>
+          
+          <div className="mt-3 text-center">
+            <p>Don't have an account? <Link to="/signup">Sign up here</Link></p>
+          </div>
         </div>
       </div>
+    </div>
     );
   }
 }
