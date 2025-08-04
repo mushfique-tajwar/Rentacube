@@ -380,7 +380,7 @@ export default class Homepage extends Component {
                     onChange={this.handleSortChange}
                   >
                     <option value="default">📅 Default (Random)</option>
-                    <option value="newest">🆕 Newest First</option>
+                    <option value="newest">⏰ Newest First</option>
                     <option value="oldest">⏰ Oldest First</option>
                     <option value="price-low-high">💰 Price: Low to High</option>
                     <option value="price-high-low">💸 Price: High to Low</option>
