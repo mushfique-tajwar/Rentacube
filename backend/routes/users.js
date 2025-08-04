@@ -1,5 +1,6 @@
 const router = require('express').Router();
 const { model } = require('mongoose');
+const bcrypt = require('bcrypt');
 const User = require('../models/user.model');
 
 router.route('/').get((req, res) => {
@@ -47,60 +48,66 @@ router.route('/add').post((req, res) => {
         });
 });
 
-router.route('/login').post((req, res) => {
+router.route('/login').post(async (req, res) => {
     const username = req.body.username;
     const password = req.body.password;
 
-    User.findOne({ username: username })
-        .then(user => {
-            if (!user) {
-                return res.status(400).json('User not found');
-            }
-            
-            // Simple password check (in production, use bcrypt for hashed passwords)
-            if (user.password === password) {
-                res.json({
-                    message: 'Login successful',
-                    username: user.username,
-                    fullName: user.fullName,
-                    email: user.email,
-                    userType: user.userType,
-                    isAdmin: user.username === 'admin' // Check if user is admin
-                });
-            } else {
-                res.status(400).json('Invalid password');
-            }
-        })
-        .catch(err => res.status(400).json('Error: ' + err));
+    try {
+        const user = await User.findOne({ username: username });
+        
+        if (!user) {
+            return res.status(400).json('User not found');
+        }
+        
+        // Use bcrypt to compare password
+        const isPasswordValid = await user.comparePassword(password);
+        
+        if (isPasswordValid) {
+            res.json({
+                message: 'Login successful',
+                username: user.username,
+                fullName: user.fullName,
+                email: user.email,
+                userType: user.userType,
+                isAdmin: user.username === 'admin' // Check if user is admin
+            });
+        } else {
+            res.status(400).json('Invalid password');
+        }
+    } catch (err) {
+        res.status(400).json('Error: ' + err);
+    }
 });
 
 // Admin routes - Update user
-router.route('/admin/update/:id').put((req, res) => {
+router.route('/admin/update/:id').put(async (req, res) => {
     // Simple admin check (in production, use proper JWT authentication)
     if (req.body.adminUsername !== 'admin') {
         return res.status(403).json('Access denied. Admin privileges required.');
     }
     
-    User.findById(req.params.id)
-        .then(user => {
-            if (!user) {
-                return res.status(404).json('User not found');
-            }
-            
-            user.username = req.body.username || user.username;
-            user.fullName = req.body.fullName || user.fullName;
-            user.email = req.body.email || user.email;
-            user.userType = req.body.userType || user.userType;
-            
-            // Only update password if provided
-            if (req.body.password) {
-                user.password = req.body.password;
-            }
-            
-            return user.save();
-        })
-        .then(() => res.json('User updated successfully!'))
-        .catch(err => res.status(400).json('Error: ' + err));
+    try {
+        const user = await User.findById(req.params.id);
+        
+        if (!user) {
+            return res.status(404).json('User not found');
+        }
+        
+        user.username = req.body.username || user.username;
+        user.fullName = req.body.fullName || user.fullName;
+        user.email = req.body.email || user.email;
+        user.userType = req.body.userType || user.userType;
+        
+        // Only update password if provided (will be automatically hashed by pre-save middleware)
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+        
+        await user.save();
+        res.json('User updated successfully!');
+    } catch (err) {
+        res.status(400).json('Error: ' + err);
+    }
 });
 
 // Admin routes - Delete user

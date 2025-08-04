@@ -1,7 +1,5 @@
 import React, { Component } from 'react';
 import { Link } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
 import axios from 'axios';
 
 export default class CreateUser extends Component {
@@ -150,6 +148,7 @@ export default class CreateUser extends Component {
               value={this.state.email}
               onChange={this.onChangeEmail}
               required
+              placeholder="Enter your email address"
             />
           </div>
           <div className="form-group mb-3">
@@ -187,6 +186,10 @@ export default class CreateUser extends Component {
             {this.state.isLoading ? 'Creating User...' : 'Create User'}
           </button>
         </form>
+        
+        <div className="mt-3 text-center">
+          <p>Already have an account? <Link to="/signin">Sign in here</Link></p>
+        </div>
       </div>
     );
   }

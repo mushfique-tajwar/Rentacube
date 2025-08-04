@@ -1,4 +1,5 @@
 import React, { Component } from 'react';
+import { Link } from 'react-router-dom';
 import axios from 'axios';
 
 export default class SignIn extends Component {
@@ -125,6 +126,10 @@ export default class SignIn extends Component {
             {this.state.isLoading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+        
+        <div className="mt-3 text-center">
+          <p>Don't have an account? <Link to="/signup">Sign up here</Link></p>
+        </div>
       </div>
     );
   }

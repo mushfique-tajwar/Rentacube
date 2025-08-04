@@ -24,6 +24,7 @@ function App() {
             <Route path="/about" element={<h1>About Rentacube</h1>} />
             <Route path="/contact" element={<h1>Contact Us</h1>} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/signup" element={<CreateUser />} />
             <Route path="/create-user" element={<CreateUser />} />
             <Route path="/create-listing" element={<CreateListing />} />
             <Route path="/admin" element={<AdminPanel />} />
