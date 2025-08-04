@@ -84,18 +84,17 @@ export default class Navbar extends Component {
       <>
         <nav className="navbar navbar-expand-lg navbar-light bg-info">
           <div className="container-fluid">
-            <Link to="/" className="navbar-brand">Rentacube</Link>
+            <Link to="/" className="navbar-brand d-flex align-items-center">
+              <img 
+                src="/Logo.png" 
+                alt="Rentacube Logo" 
+                height="40" 
+                className="me-2"
+              />
+              Rentacube
+            </Link>
             <div className="collapse navbar-collapse">
               <ul className="navbar-nav me-auto">
-                <li className="nav-item">
-                  <Link to="/" className="nav-link">Home</Link>
-                </li>
-                <li className="nav-item">
-                  <Link to="/about" className="nav-link">About</Link>
-                </li>
-                <li className="nav-item">
-                  <Link to="/contact" className="nav-link">Contact</Link>
-                </li>
               </ul>
               <ul className="navbar-nav ms-auto">
                 {isLoggedIn ? (
