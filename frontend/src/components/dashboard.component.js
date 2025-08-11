@@ -1,24 +1,15 @@
 import React, { Component } from 'react';
-import axios from 'axios';
+import { BookingAPI, ReviewAPI, UserAPI } from '../services/api';
 
 export default class Dashboard extends Component {
   constructor(props) {
     super(props);
-
     this.state = {
-      user: {
-        username: '',
-        email: '',
-        createdAt: ''
-      },
-      listings: [],
+  user: { username: '', fullName: '', email: '', phone: '', location: '', createdAt: '' },
+      listings: [], // TODO: fetch user's listings
       bookings: [],
-      analytics: {
-        totalViews: 0,
-        totalEarnings: 0,
-        activeListings: 0,
-        completedBookings: 0
-      },
+      reviewsGiven: {}, // bookingId -> true
+      analytics: { totalViews: 0, totalEarnings: 0, activeListings: 0, completedBookings: 0 },
       activeTab: 'profile',
       isLoading: true,
       message: ''
@@ -35,43 +26,115 @@ export default class Dashboard extends Component {
       window.location.href = '/signin';
       return;
     }
-
+    this.username = username;
+  this.userType = localStorage.getItem('userType');
+  this.isAdmin = localStorage.getItem('isAdmin') === 'true';
     this.loadUserData(username);
+    this.loadBookings(username);
+  // Kick off an auto-complete on load (no-op if none due)
+  BookingAPI.autoComplete().catch(()=>{});
   }
 
   loadUserData = (username) => {
-    // For now, we'll simulate data since we don't have all endpoints yet
-    // In a real app, you'd make API calls to get user data, listings, bookings, etc.
-    
-    // Simulate loading user profile
-    setTimeout(() => {
-      this.setState({
-        user: {
-          username: username,
-          email: `${username}@example.com`, // This would come from API
-          createdAt: new Date().toLocaleDateString()
-        },
-        listings: [
-          { id: 1, title: 'Modern Apartment', price: '$120/night', status: 'Active', views: 45 },
-          { id: 2, title: 'Cozy Studio', price: '$80/night', status: 'Active', views: 32 }
-        ],
-        bookings: [
-          { id: 1, property: 'Beach House', dates: 'Dec 1-5, 2024', status: 'Confirmed', amount: '$400' },
-          { id: 2, property: 'City Loft', dates: 'Nov 15-18, 2024', status: 'Completed', amount: '$300' }
-        ],
-        analytics: {
-          totalViews: 77,
-          totalEarnings: 700,
-          activeListings: 2,
-          completedBookings: 1
-        },
-        isLoading: false
-      });
-    }, 500);
+    this.setState({ user: { 
+      username,
+      fullName: localStorage.getItem('fullName') || username,
+      email: localStorage.getItem('email') || `${username}@example.com`,
+      phone: localStorage.getItem('phone') || '',
+      location: localStorage.getItem('location') || '' ,
+      createdAt: ''
+    } });
+  }
+
+  loadBookings = async (username) => {
+    try {
+      const { data } = await BookingAPI.forUser(username);
+      const bookings = data.map(b => ({
+        id: b._id,
+        listingId: b.listing?._id || b.listing,
+        property: b.listing?.name || 'Listing',
+        renterUsername: b.renterUsername,
+        customerUsername: b.customerUsername,
+        dates: `${new Date(b.startDate).toLocaleDateString()} - ${new Date(b.endDate).toLocaleDateString()}`,
+        status: b.status,
+        amount: `$${b.totalPrice}`,
+  paymentStatus: b.paymentStatus || 'Unpaid',
+        canReview: b.status === 'Completed' && b.customerUsername === username
+      }));
+      this.setState({ bookings, isLoading: false });
+    } catch (e) {
+      console.error(e);
+      this.setState({ isLoading: false, message: 'Failed to load bookings' });
+    }
+  }
+
+  updateBookingStatus = async (bookingId, status) => {
+    try {
+      await BookingAPI.updateStatus(bookingId, status);
+      this.loadBookings(this.username);
+      this.setState({ message: 'Booking status updated.' });
+    } catch (e) { this.setState({ message: 'Failed to update status' }); }
+  }
+
+  submitReview = async (bookingId, listingId) => {
+    this.setState({ showReviewForm: bookingId, reviewRating: '', reviewComment: '', message: '' });
+  }
+
+  handleReviewSubmit = async (bookingId, listingId) => {
+    const rating = Number(this.state.reviewRating);
+    if (!rating || rating < 1 || rating > 5) {
+      this.setState({ message: 'Invalid rating (1-5)' });
+      return;
+    }
+    const comment = this.state.reviewComment || '';
+    try {
+      await ReviewAPI.create({ bookingId, listingId, rating, comment, customerUsername: this.username });
+      this.setState(prev => ({ reviewsGiven: { ...prev.reviewsGiven, [bookingId]: true }, showReviewForm: null, reviewRating: '', reviewComment: '', message: 'Review submitted.' }));
+    } catch (e) { this.setState({ message: 'Failed to submit review' }); }
   }
 
   setActiveTab = (tab) => {
     this.setState({ activeTab: tab });
+  }
+
+  handleSaveProfile = async () => {
+    try {
+      const { username, fullName, phone, location } = this.state.user;
+      await UserAPI.updateProfile({ username, fullName, phone, location });
+      localStorage.setItem('fullName', fullName || '');
+      localStorage.setItem('phone', phone || '');
+      localStorage.setItem('location', location || '');
+  this.setState({ message: 'Profile updated' });
+  } catch (e) { this.setState({ message: 'Failed to update profile' }); }
+  }
+
+  handleChangePassword = async () => {
+    const { oldPassword, newPassword, confirmPassword } = this.state;
+    if (!oldPassword || !newPassword) return this.setState({ message: 'Please fill all password fields' });
+    if (newPassword !== confirmPassword) return this.setState({ message: 'New passwords do not match' });
+    try {
+      await UserAPI.changePassword({ username: this.username, oldPassword, newPassword });
+      this.setState({ oldPassword: '', newPassword: '', confirmPassword: '' });
+      this.setState({ message: 'Password changed' });
+  } catch (e) { this.setState({ message: e.response?.data || 'Failed to change password' }); }
+  }
+
+  handleRequestRenter = async () => {
+    const approvalStatus = localStorage.getItem('approvalStatus');
+    if (approvalStatus === 'rejected') {
+      this.setState({ message: 'Your previous renter application was rejected. Please contact support.' });
+      return;
+    }
+    try {
+      const { username } = this.state.user;
+      const { data } = await UserAPI.requestRenter({ username });
+      localStorage.setItem('userType', data.userType);
+      localStorage.setItem('approvalStatus', data.approvalStatus);
+      this.userType = data.userType;
+      this.setState({ message: data.message + ' Your account is now pending approval.' });
+    } catch (e) {
+      this.setState({ message: e.response?.data || 'Failed to submit renter request' });
+    }
   }
 
   renderProfile = () => (
@@ -81,18 +144,13 @@ export default class Dashboard extends Component {
       </div>
       <div className="card-body">
         <div className="row">
-          <div className="col-md-6">
+          <div className="col-md-12">
             <p><strong>Username:</strong> {this.state.user.username}</p>
+            <p><strong>Full Name:</strong> {this.state.user.fullName}</p>
             <p><strong>Email:</strong> {this.state.user.email}</p>
+            <p><strong>Phone:</strong> {this.state.user.phone || <span className="text-muted">Not set</span>}</p>
+            <p><strong>Location:</strong> {this.state.user.location || <span className="text-muted">Not set</span>}</p>
             <p><strong>Member Since:</strong> {this.state.user.createdAt}</p>
-          </div>
-          <div className="col-md-6">
-            <div className="text-center">
-              <div className="bg-light rounded p-3">
-                <i className="fas fa-user fa-3x text-muted mb-2"></i>
-                <p className="mb-0">Profile Picture</p>
-              </div>
-            </div>
           </div>
         </div>
       </div>
@@ -101,62 +159,128 @@ export default class Dashboard extends Component {
 
   renderListingsAndBookings = () => (
     <div className="row">
-      <div className="col-md-6">
-        <div className="card shadow">
-          <div className="card-header">
-            <h5>My Listings</h5>
-          </div>
-          <div className="card-body">
-            {this.state.listings.length === 0 ? (
-              <p className="text-muted">No listings yet</p>
-            ) : (
-              this.state.listings.map(listing => (
-                <div key={listing.id} className="border-bottom pb-2 mb-2">
+      {this.userType === 'renter' && (
+        <div className="col-md-6">
+          <div className="card shadow">
+            <div className="card-header"><h5>My Listings</h5></div>
+            <div className="card-body">
+              {this.state.listings.length === 0 ? <p className="text-muted">No listings yet</p> : this.state.listings.map(l => (
+                <div key={l.id} className="border-bottom pb-2 mb-2" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${l.id}` }>
                   <div className="d-flex justify-content-between">
                     <div>
-                      <h6>{listing.title}</h6>
-                      <p className="mb-1 text-muted">{listing.price}</p>
+                      <h6 className="mb-1">{l.title}</h6>
+                      <p className="mb-1 text-muted">{l.price}</p>
                     </div>
                     <div className="text-end">
-                      <span className={`badge ${listing.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>
-                        {listing.status}
-                      </span>
-                      <p className="mb-0 small text-muted">{listing.views} views</p>
+                      <span className={`badge ${l.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>{l.status}</span>
+                      <p className="mb-0 small text-muted">{l.views} views</p>
                     </div>
                   </div>
                 </div>
-              ))
-            )}
-            <button className="btn btn-primary btn-sm mt-2">Add New Listing</button>
+              ))}
+              <button className="btn btn-primary btn-sm mt-2">Add New Listing</button>
+            </div>
           </div>
         </div>
-      </div>
-      <div className="col-md-6">
+      )}
+      <div className={this.userType === 'renter' ? 'col-md-6' : 'col-12'}>
         <div className="card shadow">
-          <div className="card-header">
-            <h5>My Bookings</h5>
+          <div className="card-header d-flex justify-content-between align-items-center"><h5 className="mb-0">My Bookings</h5>{this.userType==='renter' && (<button className="btn btn-sm btn-outline-secondary" onClick={async ()=>{ try { await BookingAPI.autoComplete(); this.loadBookings(this.username); this.setState({ message: 'Checked and auto-completed due bookings.' }); } catch(e){} }}>Auto-complete due</button>)}
           </div>
           <div className="card-body">
-            {this.state.bookings.length === 0 ? (
-              <p className="text-muted">No bookings yet</p>
-            ) : (
-              this.state.bookings.map(booking => (
-                <div key={booking.id} className="border-bottom pb-2 mb-2">
-                  <div className="d-flex justify-content-between">
-                    <div>
-                      <h6>{booking.property}</h6>
-                      <p className="mb-1 text-muted">{booking.dates}</p>
-                    </div>
-                    <div className="text-end">
-                      <span className={`badge ${booking.status === 'Confirmed' ? 'bg-warning' : 'bg-success'}`}>
-                        {booking.status}
-                      </span>
-                      <p className="mb-0 small text-muted">{booking.amount}</p>
-                    </div>
+            {this.state.message && <div className="alert alert-info py-2">{this.state.message}</div>}
+            {this.state.bookings.length === 0 ? <p className="text-muted">No bookings yet</p> : this.state.bookings.map(b => (
+              <div key={b.id} className="border-bottom pb-2 mb-2">
+                <div className="d-flex justify-content-between">
+                  <div>
+                    <h6>{b.property}</h6>
+                    <p className="mb-1 text-muted">{b.dates}</p>
+                    <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
+                  </div>
+                  <div className="text-end" style={{minWidth:'140px'}}>
+                    <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>
+                    <p className="mb-1 small text-muted">{b.amount}</p>
+                    {/* Payment status row */}
+                    {b.paymentStatus && (
+                      <div className="mb-1"><span className={`badge ${b.paymentStatus==='Unpaid'?'bg-secondary':b.paymentStatus==='Paid'?'bg-info':'bg-success'}`}>{b.paymentStatus}</span></div>
+                    )}
+                    {/* Renter controls */}
+                    {!this.isAdmin && b.renterUsername === this.username && b.status === 'Pending' && (
+                      <div className="btn-group btn-group-sm mb-1">
+                        <button className="btn btn-outline-success" onClick={()=>this.updateBookingStatus(b.id,'Confirmed')}>Confirm</button>
+                        <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                      </div>
+                    )}
+                    {!this.isAdmin && b.renterUsername === this.username && b.status === 'Confirmed' && (
+                      <div className="btn-group btn-group-sm mb-1">
+                        <button className="btn btn-outline-primary" onClick={()=>this.updateBookingStatus(b.id,'Completed')}>Complete</button>
+                        <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                      </div>
+                    )}
+                    {/* Customer payment actions */}
+                    {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
+                      <div className="mb-1">
+                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Mark as Paid</button>
+                      </div>
+                    )}
+                    {this.state.showPayFor === b.id && (
+                      <div className="border rounded p-2 mt-2">
+                        <div className="mb-2">
+                          <label className="form-label mb-1">Payment Method</label>
+                          <select className="form-select form-select-sm" value={this.state.payMethod||'bkash'} onChange={e=>this.setState({payMethod:e.target.value})}>
+                            <option value="bkash">bKash</option>
+                            <option value="nagad">Nagad</option>
+                            <option value="card">Card</option>
+                            <option value="cash">Cash</option>
+                          </select>
+                        </div>
+                        <div className="mb-2">
+                          <label className="form-label mb-1">Reference / Txn ID</label>
+                          <input className="form-control form-control-sm" value={this.state.payRef||''} onChange={e=>this.setState({payRef:e.target.value})} placeholder="e.g., TX123..." />
+                        </div>
+                        <div className="d-flex gap-2">
+                          <button className="btn btn-success btn-sm" onClick={async ()=>{
+                            try { await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef }); this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to mark as paid' }); }
+                          }}>Save</button>
+                          <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
+                        </div>
+                      </div>
+                    )}
+                    {/* Renter settlement action */}
+                    {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Paid' && (
+                      <div className="mt-1">
+                        <button className="btn btn-sm btn-outline-success" onClick={async ()=>{ try { await BookingAPI.settle(b.id); this.setState({ message:'Payment settled.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to settle payment' }); } }}>Mark as Settled</button>
+                      </div>
+                    )}
+                    {/* Customer review */}
+                    {b.canReview && !this.state.reviewsGiven[b.id] && !this.isAdmin && (
+                      <>
+                        <button className="btn btn-sm btn-outline-primary mb-1" onClick={()=>this.submitReview(b.id, b.listingId)}>Review</button>
+                        {this.state.showReviewForm === b.id && (
+                          <div className="border rounded p-2 mt-2">
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Rating (1-5):</label>
+                              <input type="number" min="1" max="5" className="form-control form-control-sm" value={this.state.reviewRating || ''} onChange={e=>this.setState({reviewRating:e.target.value})} />
+                            </div>
+                            <div className="mb-2">
+                              <label className="form-label mb-1">Comment:</label>
+                              <textarea className="form-control form-control-sm" rows="2" value={this.state.reviewComment || ''} onChange={e=>this.setState({reviewComment:e.target.value})} />
+                            </div>
+                            <div className="d-flex gap-2">
+                              <button className="btn btn-success btn-sm" onClick={()=>this.handleReviewSubmit(b.id, b.listingId)}>Submit</button>
+                              <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({showReviewForm:null, reviewRating:'', reviewComment:''})}>Cancel</button>
+                            </div>
+                          </div>
+                        )}
+                      </>
+                    )}
+                    {b.canReview && this.state.reviewsGiven[b.id] && (
+                      <span className="badge bg-info">Reviewed</span>
+                    )}
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+            ))}
           </div>
         </div>
       </div>
@@ -202,67 +326,57 @@ export default class Dashboard extends Component {
 
   renderSettings = () => (
     <div className="card shadow">
-      <div className="card-header">
-        <h5>Personal Settings</h5>
-      </div>
+      <div className="card-header"><h5>Personal Settings</h5></div>
       <div className="card-body">
-        <form>
+        <form onSubmit={(e)=>e.preventDefault()}>
           <div className="row">
             <div className="col-md-6">
-              <div className="form-group mb-3">
+              <div className="mb-3">
                 <label className="form-label">Username</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  value={this.state.user.username}
-                  readOnly
-                />
+                <input type="text" className="form-control" value={this.state.user.username} readOnly />
               </div>
-              <div className="form-group mb-3">
+              <div className="mb-3">
                 <label className="form-label">Email</label>
-                <input 
-                  type="email" 
-                  className="form-control" 
-                  value={this.state.user.email}
-                />
+                <input type="email" className="form-control" value={this.state.user.email} readOnly />
               </div>
-              <div className="form-group mb-3">
-                <label className="form-label">New Password</label>
-                <input 
-                  type="password" 
-                  className="form-control" 
-                  placeholder="Leave empty to keep current password"
-                />
+              <div className="mb-3">
+                <label className="form-label">Full Name</label>
+                <input type="text" className="form-control" value={this.state.user.fullName} onChange={(e)=>this.setState({ user: { ...this.state.user, fullName: e.target.value }})} />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Phone Number</label>
+                <input type="tel" className="form-control" value={this.state.user.phone} onChange={(e)=>this.setState({ user: { ...this.state.user, phone: e.target.value }})} />
+              </div>
+              <div className="mb-3">
+                <label className="form-label">Location</label>
+                <input type="text" className="form-control" value={this.state.user.location} onChange={(e)=>this.setState({ user: { ...this.state.user, location: e.target.value }})} />
               </div>
             </div>
             <div className="col-md-6">
-              <div className="form-group mb-3">
-                <label className="form-label">Phone Number</label>
-                <input 
-                  type="tel" 
-                  className="form-control" 
-                  placeholder="Enter phone number"
-                />
+              <div className="mb-3">
+                <label className="form-label">Old Password</label>
+                <input type="password" className="form-control" value={this.state.oldPassword || ''} onChange={(e)=>this.setState({ oldPassword: e.target.value })} />
               </div>
-              <div className="form-group mb-3">
-                <label className="form-label">Location</label>
-                <input 
-                  type="text" 
-                  className="form-control" 
-                  placeholder="City, Country"
-                />
+              <div className="mb-3">
+                <label className="form-label">New Password</label>
+                <input type="password" className="form-control" value={this.state.newPassword || ''} onChange={(e)=>this.setState({ newPassword: e.target.value })} />
               </div>
-              <div className="form-group mb-3">
-                <label className="form-label">Bio</label>
-                <textarea 
-                  className="form-control" 
-                  rows="3"
-                  placeholder="Tell us about yourself"
-                ></textarea>
+              <div className="mb-3">
+                <label className="form-label">Confirm New Password</label>
+                <input type="password" className="form-control" value={this.state.confirmPassword || ''} onChange={(e)=>this.setState({ confirmPassword: e.target.value })} />
+                {this.state.newPassword && this.state.confirmPassword && this.state.newPassword !== this.state.confirmPassword && (
+                  <div className="form-text text-danger">New passwords do not match</div>
+                )}
               </div>
             </div>
           </div>
-          <button type="submit" className="btn btn-primary">Update Settings</button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-primary" onClick={this.handleSaveProfile}>Save Profile</button>
+            <button className="btn btn-outline-primary" onClick={this.handleChangePassword}>Change Password</button>
+            {this.userType !== 'renter' && (
+              <button className="btn btn-warning" onClick={this.handleRequestRenter}>Apply as Renter</button>
+            )}
+          </div>
         </form>
       </div>
     </div>
@@ -292,7 +406,7 @@ export default class Dashboard extends Component {
         </div>
 
         {/* Navigation Tabs */}
-        <ul className="nav nav-tabs mb-4">
+        <ul className="nav nav-tabs mb-4 app-tabs">
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'profile' ? 'active' : ''}`}
@@ -301,6 +415,7 @@ export default class Dashboard extends Component {
               Profile
             </button>
           </li>
+          {this.userType === 'renter' && (
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'listings' ? 'active' : ''}`}
@@ -309,6 +424,7 @@ export default class Dashboard extends Component {
               Listings & Bookings
             </button>
           </li>
+          )}
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'analytics' ? 'active' : ''}`}

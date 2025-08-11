@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 export default class Footer extends Component {
   render() {
     return (
-      <footer className="bg-secondary text-light mt-auto py-4">
+  <footer className="mt-auto py-4 app-footer-fixed">
         <div className="container">
           <div className="row">
             <div className="col-md-6">
@@ -14,23 +14,23 @@ export default class Footer extends Component {
             <div className="col-md-3">
               <h6>Quick Links</h6>
               <ul className="list-unstyled">
-                <li><Link to="/about" className="text-light text-decoration-none">About</Link></li>
-                <li><Link to="/contact" className="text-light text-decoration-none">Contact</Link></li>
+                <li><Link to="/about" className="text-decoration-none">About</Link></li>
+                <li><Link to="/contact" className="text-decoration-none">Contact</Link></li>
               </ul>
             </div>
             <div className="col-md-3">
               <h6>Follow Us</h6>
               <div className="d-flex">
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="text-light me-3">
+                <a href="https://github.com" target="_blank" rel="noopener noreferrer" className="me-3">
                   <i className="fab fa-github fa-lg"></i>
                 </a>
-                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="text-light me-3">
+                <a href="https://linkedin.com" target="_blank" rel="noopener noreferrer" className="me-3">
                   <i className="fab fa-linkedin fa-lg"></i>
                 </a>
-                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="text-light me-3">
+                <a href="https://facebook.com" target="_blank" rel="noopener noreferrer" className="me-3">
                   <i className="fab fa-facebook fa-lg"></i>
                 </a>
-                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="text-light me-3">
+                <a href="https://instagram.com" target="_blank" rel="noopener noreferrer" className="me-3">
                   <i className="fab fa-instagram fa-lg"></i>
                 </a>
               </div>

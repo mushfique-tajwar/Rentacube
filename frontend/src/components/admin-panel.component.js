@@ -1,16 +1,19 @@
 import React, { Component } from 'react';
 import axios from 'axios';
+import { UserAPI } from '../services/api';
 
 export default class AdminPanel extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-      activeTab: 'users',
+  activeTab: 'users',
       users: [],
       listings: [],
+  pendingRenters: [],
       isLoading: false,
       message: '',
+  confirmAction: null,
       editingUser: null,
       editingListing: null,
       editForm: {
@@ -39,11 +42,12 @@ export default class AdminPanel extends Component {
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
-      return;
+  return;
     }
     
     this.fetchUsers();
     this.fetchListings();
+  this.fetchPendingRenters();
   }
 
   fetchUsers = () => {
@@ -76,38 +80,32 @@ export default class AdminPanel extends Component {
       });
   }
 
+  fetchPendingRenters = () => {
+    this.setState({ isLoading: true });
+    UserAPI.pendingRenters()
+      .then(({data}) => {
+        this.setState({ pendingRenters: data, isLoading: false });
+      })
+      .catch(error => {
+        console.error('Error fetching pending renters:', error);
+        this.setState({ 
+          message: 'Error fetching pending renters: ' + (error.response?.data || error.message),
+          isLoading: false 
+        });
+      });
+  }
+
   handleTabChange = (tab) => {
     this.setState({ activeTab: tab, message: '', editingUser: null, editingListing: null });
+  if (tab === 'approvals') this.fetchPendingRenters();
   }
 
   handleDeleteUser = (userId) => {
-    if (window.confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
-      axios.delete(`http://localhost:3000/users/admin/delete/${userId}`, {
-        data: { adminUsername: 'admin' }
-      })
-        .then(() => {
-          this.setState({ message: 'User deleted successfully!' });
-          this.fetchUsers();
-        })
-        .catch(error => {
-          this.setState({ message: 'Error deleting user: ' + (error.response?.data || error.message) });
-        });
-    }
+    this.setState({ confirmAction: { type: 'delete-user', id: userId, text: 'Are you sure you want to delete this user? This action cannot be undone.' } });
   }
 
   handleDeleteListing = (listingId) => {
-    if (window.confirm('Are you sure you want to delete this listing? This action cannot be undone.')) {
-      axios.delete(`http://localhost:3000/listings/admin/delete/${listingId}`, {
-        data: { adminUsername: 'admin' }
-      })
-        .then(() => {
-          this.setState({ message: 'Listing deleted successfully!' });
-          this.fetchListings();
-        })
-        .catch(error => {
-          this.setState({ message: 'Error deleting listing: ' + (error.response?.data || error.message) });
-        });
-    }
+    this.setState({ confirmAction: { type: 'delete-listing', id: listingId, text: 'Are you sure you want to delete this listing? This action cannot be undone.' } });
   }
 
   handleEditUser = (user) => {
@@ -206,6 +204,18 @@ export default class AdminPanel extends Component {
       });
   }
 
+  approveRenter = (userId, status) => {
+    UserAPI.approveRenter(userId, status)
+      .then(() => {
+        this.setState({ message: `Renter ${status}` });
+        this.fetchPendingRenters();
+        this.fetchUsers();
+      })
+      .catch(error => {
+        this.setState({ message: 'Error updating approval: ' + (error.response?.data || error.message) });
+      });
+  }
+
   // Helper function to format pricing display
   formatPricing = (listing) => {
     const pricing = listing.pricing || {};
@@ -260,6 +270,14 @@ export default class AdminPanel extends Component {
               onClick={() => this.handleTabChange('listings')}
             >
               <i className="fas fa-list me-2"></i>Manage Listings
+            </button>
+          </li>
+          <li className="nav-item">
+            <button 
+              className={`nav-link ${activeTab === 'approvals' ? 'active' : ''}`}
+              onClick={() => this.handleTabChange('approvals')}
+            >
+              <i className="fas fa-check-circle me-2"></i>Approvals
             </button>
           </li>
         </ul>
@@ -393,7 +411,7 @@ export default class AdminPanel extends Component {
           </div>
         )}
 
-        {/* Listings Tab */}
+  {/* Listings Tab */}
         {activeTab === 'listings' && (
           <div className="row">
             <div className="col-12">
@@ -578,6 +596,54 @@ export default class AdminPanel extends Component {
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Approvals Tab */}
+        {activeTab === 'approvals' && (
+          <div className="row">
+            <div className="col-12">
+              <h4>Pending Renter Approvals</h4>
+              <div className="card shadow">
+                <div className="card-body">
+                  {this.state.pendingRenters.length === 0 ? (
+                    <p className="text-muted mb-0">No pending renters.</p>
+                  ) : (
+                    <div className="table-responsive">
+                      <table className="table table-striped">
+                        <thead>
+                          <tr>
+                            <th>Username</th>
+                            <th>Full Name</th>
+                            <th>Email</th>
+                            <th>Phone</th>
+                            <th>Location</th>
+                            <th>Requested</th>
+                            <th>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {this.state.pendingRenters.map(u => (
+                            <tr key={u._id}>
+                              <td>{u.username}</td>
+                              <td>{u.fullName}</td>
+                              <td>{u.email}</td>
+                              <td>{u.phone || '-'}</td>
+                              <td>{u.location || '-'}</td>
+                              <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                              <td>
+                                <button className="btn btn-success btn-sm me-2" onClick={()=>this.approveRenter(u._id, 'approved')}>Approve</button>
+                                <button className="btn btn-danger btn-sm" onClick={()=>this.approveRenter(u._id, 'rejected')}>Reject</button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

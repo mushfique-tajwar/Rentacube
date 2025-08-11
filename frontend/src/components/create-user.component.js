@@ -9,7 +9,10 @@ export default class CreateUser extends Component {
     this.onChangeUsername = this.onChangeUsername.bind(this);
     this.onChangeFullName = this.onChangeFullName.bind(this);
     this.onChangeEmail = this.onChangeEmail.bind(this);
-    this.onChangePassword = this.onChangePassword.bind(this);
+  this.onChangePassword = this.onChangePassword.bind(this);
+  this.onChangePassword2 = this.onChangePassword2.bind(this);
+  this.onChangePhone = this.onChangePhone.bind(this);
+  this.onChangeLocation = this.onChangeLocation.bind(this);
     this.onChangeUserType = this.onChangeUserType.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
 
@@ -17,7 +20,10 @@ export default class CreateUser extends Component {
       username: '',
       fullName: '',
       email: '',
-      password: '',
+  password: '',
+  password2: '',
+  phone: '',
+  location: '',
       userType: 'customer', // Default to customer
       message: '',
       isLoading: false
@@ -47,6 +53,15 @@ export default class CreateUser extends Component {
       password: e.target.value
     });
   }
+  onChangePassword2(e) {
+    this.setState({ password2: e.target.value });
+  }
+  onChangePhone(e) {
+    this.setState({ phone: e.target.value });
+  }
+  onChangeLocation(e) {
+    this.setState({ location: e.target.value });
+  }
 
   onChangeUserType(e) {
     this.setState({
@@ -59,11 +74,18 @@ export default class CreateUser extends Component {
 
     this.setState({ isLoading: true, message: '' });
 
+    if (this.state.password !== this.state.password2) {
+      this.setState({ isLoading: false, message: 'Error: Passwords do not match' });
+      return;
+    }
+
     const user = {
       username: this.state.username,
       fullName: this.state.fullName,
       email: this.state.email,
-      password: this.state.password,
+  password: this.state.password,
+  phone: this.state.phone,
+  location: this.state.location,
       userType: this.state.userType
     };
 
@@ -75,7 +97,9 @@ export default class CreateUser extends Component {
         // Save username, fullName and userType to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
         localStorage.setItem('fullName', res.data.fullName || this.state.fullName);
-        localStorage.setItem('userType', res.data.userType || this.state.userType);
+  localStorage.setItem('userType', res.data.userType || this.state.userType);
+    if (res.data.approvalStatus) localStorage.setItem('approvalStatus', res.data.approvalStatus);
+  localStorage.setItem('phone', res.data.phone || this.state.phone || '');
         localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
         localStorage.setItem('isLoggedIn', 'true');
         this.setState({
@@ -85,7 +109,10 @@ export default class CreateUser extends Component {
           fullName: '',
           email: '',
           password: '',
-          userType: 'customer'
+          userType: 'customer',
+          password2: '',
+          phone: '',
+          location: ''
         });
         // Redirect based on user type - admin goes to admin panel, others go to homepage
         setTimeout(() => {
@@ -163,6 +190,41 @@ export default class CreateUser extends Component {
               required
               minLength="6"
               placeholder="Enter your password"
+            />
+          </div>
+          <div className="form-group mb-3">
+            <label className="form-label mb-2">Confirm Password:</label>
+            <input 
+              type="password" 
+              className="form-control"
+              value={this.state.password2}
+              onChange={this.onChangePassword2}
+              required
+              minLength="6"
+              placeholder="Re-enter your password"
+            />
+            {this.state.password && this.state.password2 && this.state.password !== this.state.password2 && (
+              <div className="form-text text-danger">Passwords do not match</div>
+            )}
+          </div>
+          <div className="form-group mb-3">
+            <label className="form-label mb-2">Phone Number:</label>
+            <input 
+              type="tel" 
+              className="form-control"
+              value={this.state.phone}
+              onChange={this.onChangePhone}
+              placeholder="Optional phone number"
+            />
+          </div>
+          <div className="form-group mb-3">
+            <label className="form-label mb-2">Location:</label>
+            <input 
+              type="text" 
+              className="form-control"
+              value={this.state.location}
+              onChange={this.onChangeLocation}
+              placeholder="City, District"
             />
           </div>
           <div className="form-group mb-3">

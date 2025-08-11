@@ -54,7 +54,10 @@ export default class SignIn extends Component {
         localStorage.setItem('username', this.state.username);
         localStorage.setItem('fullName', res.data.fullName || '');
         localStorage.setItem('userType', res.data.userType || 'customer');
-        localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
+  localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
+  if (res.data.approvalStatus) localStorage.setItem('approvalStatus', res.data.approvalStatus);
+  if (res.data.phone) localStorage.setItem('phone', res.data.phone);
+  if (res.data.location) localStorage.setItem('location', res.data.location);
         localStorage.setItem('isLoggedIn', 'true');
         
         console.log('=== STORED IN LOCALSTORAGE ===');

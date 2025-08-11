@@ -16,18 +16,19 @@ export default class Homepage extends Component {
       pendingCity: '',
       pendingMinPrice: '',
       pendingMaxPrice: '',
-      searchQuery: '',
+  searchQuery: new URLSearchParams(window.location.search).get('q') || '',
       sortBy: 'default', // default, price-low-high, price-high-low, name-a-z, name-z-a
       listings: [],
       filteredListings: [],
       isLoading: true,
       error: null,
-      imageLoadStates: {} // Track loading state of each image
+  imageLoadStates: {}, // Track loading state of each image
+  topMessage: ''
     };
   }
 
   componentDidMount() {
-    this.fetchListings();
+  this.fetchListings();
   }
 
   // Fisher-Yates shuffle algorithm to randomize array order
@@ -55,8 +56,8 @@ export default class Homepage extends Component {
           isLoading: false,
           error: null
         }, () => {
-          // Apply initial sorting if any is selected
-          if (this.state.sortBy !== 'default') {
+          // Apply initial search/filters/sorting if any is active (including q from URL)
+          if (this.hasActiveFilters()) {
             this.filterAndSortListings();
           }
         });
@@ -348,50 +349,29 @@ export default class Homepage extends Component {
               {this.canCreateListing() && (
                 <button 
                   className="btn btn-primary ms-4"
-                  onClick={() => window.location.href = '/create-listing'}
+                  onClick={() => {
+                    const status = localStorage.getItem('approvalStatus');
+                    if (localStorage.getItem('userType') === 'renter' && status !== 'approved') {
+                      this.setState({ topMessage: 'Your renter account is pending approval. Please wait for admin approval.' });
+                      setTimeout(()=>this.setState({ topMessage: '' }), 3000);
+                      return;
+                    }
+                    window.location.href = '/create-listing';
+                  }}
                 >
                   <i className="fas fa-plus me-2"></i>Create Your Listing
                 </button>
               )}
             </div>
+            {this.state.topMessage && (
+              <div className="alert alert-info mt-3 py-2 text-center">
+                {this.state.topMessage}
+              </div>
+            )}
           </div>
         </div>
 
-        {/* Search Bar - Full Width */}
-        <div className="row mb-4">
-          <div className="col-12">
-            <div className="card search-card">
-              <div className="card-body">
-                <div className="input-group">
-                  <span className="input-group-text">
-                    <i className="fas fa-search"></i>
-                  </span>
-                  <input 
-                    type="text"
-                    className="form-control"
-                    placeholder="Search listings by name, description, or category..."
-                    value={this.state.searchQuery}
-                    onChange={this.handleSearchChange}
-                  />
-                  {this.state.searchQuery && (
-                    <button 
-                      className="btn btn-outline-secondary"
-                      onClick={() => this.setState({ searchQuery: '' }, this.filterAndSortListings)}
-                    >
-                      <i className="fas fa-times"></i>
-                    </button>
-                  )}
-                </div>
-                {this.state.searchQuery && (
-                  <small className="text-muted mt-2 d-block">
-                    <i className="fas fa-info-circle me-1"></i>
-                    Searching for: "{this.state.searchQuery}"
-                  </small>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
+  {/* Search moved to navbar; homepage search removed */}
 
         <div className="row">
           {/* Left Side - Filters */}
@@ -557,7 +537,7 @@ export default class Homepage extends Component {
               ) : (
                 this.state.filteredListings.map(listing => (
                   <div key={listing._id} className="col-md-6 col-lg-4 mb-4">
-                    <div className="card listing-card h-100">
+                    <div className="card listing-card h-100" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${listing._id}` }>
                       {/* Image or Placeholder */}
                       <div className="position-relative" style={{ paddingTop: '100%', overflow: 'hidden' }}>
                         {this.getImagePath(listing) ? (
@@ -640,14 +620,16 @@ export default class Homepage extends Component {
                         <p className="card-text flex-grow-1">{listing.description}</p>
                         
                         {/* View count */}
-                        <div className="mb-2 text-muted small">
-                          <i className="fas fa-eye me-1"></i>{listing.views} views
+                        <div className="mb-2 text-muted small d-flex justify-content-between">
+                          <span><i className="fas fa-eye me-1"></i>{listing.views} views</span>
+                          {typeof listing.avgRating === 'number' && listing.reviewCount > 0 && (
+                            <span title={`${listing.reviewCount} review(s)`}>
+                              <i className="fas fa-star text-warning me-1"></i>{listing.avgRating.toFixed(1)} ({listing.reviewCount})
+                            </span>
+                          )}
                         </div>
                         
-                        {/* View Listing Button */}
-                        <button className="btn btn-outline-primary mt-auto">
-                          <i className="fas fa-eye me-2"></i>View Listing
-                        </button>
+                        {/* Entire card is clickable now */}
                       </div>
                     </div>
                   </div>

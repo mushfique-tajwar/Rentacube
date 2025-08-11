@@ -7,6 +7,9 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, trim: true, match: /.+\@.+\..+/ },
   password: { type: String, required: true, minlength: 6 },
   userType: { type: String, required: true, enum: ['customer', 'renter'], default: 'customer' },
+  approvalStatus: { type: String, enum: ['approved','pending','rejected'], default: 'approved' },
+  phone: { type: String, trim: true, default: '' },
+  location: { type: String, trim: true, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 

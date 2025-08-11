@@ -12,6 +12,7 @@ import Dashboard from './components/dashboard.component';
 import Homepage from './components/homepage.component';
 import CreateListing from './components/create-listing.component';
 import AdminPanel from './components/admin-panel.component';
+import ListingDetail from './components/listing-detail.component';
 
 
 function App() {
@@ -19,7 +20,6 @@ function App() {
     <Router>
       <div className="d-flex flex-column min-vh-100">
         <Navbar />
-        <br/>
         <div className="container-fluid flex-grow-1">
           <Routes>
             <Route path="/" element={<Homepage />} />
@@ -31,6 +31,7 @@ function App() {
             <Route path="/create-listing" element={<CreateListing />} />
             <Route path="/admin" element={<AdminPanel />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/listing/:id" element={<ListingDetail />} />
           </Routes>
         </div>
         <Footer />

@@ -17,6 +17,9 @@ const listingSchema = new mongoose.Schema({
   owner: { type: String, required: true, trim: true },
   isActive: { type: Boolean, default: true },
   views: { type: Number, default: 0 },
+  // Review aggregates
+  avgRating: { type: Number, default: 0, min: 0, max: 5 },
+  reviewCount: { type: Number, default: 0, min: 0 },
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });

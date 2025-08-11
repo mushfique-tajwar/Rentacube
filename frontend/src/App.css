@@ -33,6 +33,118 @@ html, body {
   height: 100%;
 }
 
+/* Theme variables */
+:root {
+  --color-bg: #ffffff;
+  --color-bg-alt: #f8f9fa;
+  --color-text: #212529;
+  --color-card-bg: #ffffff;
+  --color-border: #dee2e6;
+  --color-accent: #0d6efd;
+}
+
+.dark-mode {
+  --color-bg: #10141a;
+  --color-bg-alt: #182028;
+  --color-text: #e6e9ec;
+  --color-card-bg: #1d252d;
+  --color-border: #2e3a44;
+  --color-accent: #3fa9ff;
+  background-color: var(--color-bg);
+  color: var(--color-text);
+}
+
+body, .App, .container, .container-fluid {
+  background-color: var(--color-bg) !important;
+  color: var(--color-text) !important;
+}
+
+.card, .filter-card, .search-card, .listing-card {
+  background-color: var(--color-card-bg) !important;
+  color: var(--color-text);
+  border: 1px solid var(--color-border) !important;
+}
+
+.navbar, .navbar-light, .navbar.bg-info, .navbar.bg-light { background-color: var(--color-bg-alt) !important; color: var(--color-text) !important; }
+
+.btn-primary { background-color: var(--color-accent); border-color: var(--color-accent); }
+
+.btn-outline-primary { color: var(--color-accent); border-color: var(--color-accent); }
+.btn-outline-primary:hover { background: var(--color-accent); color: #fff; }
+
+.dark-mode .btn-outline-primary {
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.dark-mode .form-control, .dark-mode .form-select, .dark-mode .input-group-text { background-color: #26313b; color: var(--color-text); border-color: var(--color-border); }
+.dark-mode .form-control:focus, .dark-mode .form-select:focus { background-color: #2d3a45; color: var(--color-text); }
+.dark-mode ::placeholder { color: #b5c0c7 !important; opacity: 1; }
+.dark-mode :-ms-input-placeholder { color: #b5c0c7 !important; }
+.dark-mode ::-ms-input-placeholder { color: #b5c0c7 !important; }
+
+/* General typography in dark mode */
+.dark-mode h1, .dark-mode h2, .dark-mode h3, .dark-mode h4, .dark-mode h5, .dark-mode h6,
+.dark-mode p, .dark-mode label, .dark-mode span, .dark-mode li, .dark-mode a:not(.btn) {
+  color: var(--color-text) !important;
+}
+.dark-mode .text-muted { color: #a8b3bd !important; }
+.dark-mode .nav-link { color: var(--color-text) !important; }
+.dark-mode .nav-link.active { color: #fff !important; }
+/* Improve tab contrast in dark mode */
+.dark-mode .nav-tabs { border-bottom: 1px solid #34424c !important; }
+.dark-mode .nav-tabs .nav-link { color: #e6e9ec !important; background: transparent !important; border: 1px solid transparent !important; }
+.dark-mode .nav-tabs .nav-link:hover { color: #ffffff !important; border-color: #3f4c57 #3f4c57 #34424c !important; }
+.dark-mode .nav-tabs .nav-link.active { color: #fff !important; background: #1d252d !important; border-color: #3f4c57 #3f4c57 #1d252d !important; }
+
+/* Specific class if needed */
+.app-tabs .nav-link { font-weight: 600; }
+.dark-mode .badge { color: #fff !important; }
+.dark-mode .badge.bg-secondary { background-color: #495760 !important; }
+.dark-mode .badge.bg-warning { color: #1d1d1d !important; }
+
+/* Listing card specifics */
+.dark-mode .listing-card .card-title { color: var(--color-text); }
+.dark-mode .listing-card .card-text { color: #d3d8dc; }
+
+/* Buttons - ensure readable text */
+.dark-mode .btn-outline-primary { color: var(--color-accent); }
+.dark-mode .btn-outline-primary:hover { color: #fff; }
+.dark-mode .btn-link { color: var(--color-accent) !important; }
+
+/* Table / border subtle separators */
+.dark-mode hr, .dark-mode .border-bottom { border-color: #34424c !important; }
+
+.dark-mode .badge.bg-secondary { background-color: #343a40 !important; }
+.dark-mode .badge.bg-primary { background-color: #0d6efd !important; }
+
+/* Smooth transition */
+body, .card, .navbar, .listing-card, .filter-card, .search-card, .form-control, .form-select { transition: background-color .3s ease, color .3s ease, border-color .3s ease; }
+
+footer { background: var(--color-bg-alt) !important; color: var(--color-text) !important; }
+footer a { color: var(--color-accent) !important; }
+footer hr { border-color: var(--color-border); }
+
+/* Fixed color overrides (ignore theme) */
+.navbar.fixed-sky { background-color: skyblue !important; color: #000 !important; }
+.navbar.fixed-sky.navbar-light, .navbar.fixed-sky .container, .navbar.fixed-sky .container-fluid { background-color: skyblue !important; }
+.navbar.fixed-sky .nav-link, .navbar.fixed-sky .navbar-brand { color: #000 !important; }
+.navbar.fixed-sky .nav-link, .navbar.fixed-sky .navbar-brand { color: #000 !important; }
+footer.app-footer-fixed { background-color: #d3d3d3 !important; color: #222 !important; }
+footer.app-footer-fixed a { color: #222 !important; }
+footer.app-footer-fixed a:hover { color: #000 !important; }
+footer.app-footer-fixed hr { border-color: rgba(0,0,0,0.15) !important; }
+footer.app-footer-fixed .container, footer.app-footer-fixed .container-fluid { background: transparent !important; }
+
+/* Preserve footer colors across themes (override global dark-mode typography rule) */
+.dark-mode footer.app-footer-fixed,
+.dark-mode footer.app-footer-fixed p,
+.dark-mode footer.app-footer-fixed h5,
+.dark-mode footer.app-footer-fixed h6,
+.dark-mode footer.app-footer-fixed a,
+.dark-mode footer.app-footer-fixed li,
+.dark-mode footer.app-footer-fixed span { color: #222 !important; }
+
 .min-vh-100 {
   min-height: 100vh !important;
 }
@@ -106,3 +218,28 @@ html, body {
     transform: rotate(360deg);
   }
 }
+
+/* Fixed-top navbar spacing: add top padding to body content so it isn't hidden */
+body { padding-top: 70px; }
+@media (max-width: 991.98px) { body { padding-top: 56px; } }
+
+/* Minimal search input style in navbar */
+.minimal-search-group .search-addon {
+  background: #ffffff !important;
+  border: 1px solid rgba(0,0,0,0.15) !important;
+  border-right: 0 !important;
+}
+.minimal-search-input {
+  background: #ffffff !important;
+  color: #212529 !important;
+  border: 1px solid rgba(0,0,0,0.15) !important;
+  border-left: 0 !important;
+  box-shadow: none !important;
+}
+.minimal-search-input::placeholder { color: #6c757d !important; }
+.minimal-search-input:focus { background: #fff !important; color: #212529 !important; }
+
+/* Keep search light even in dark mode */
+.dark-mode .minimal-search-group .search-addon { background: #ffffff !important; border-color: rgba(255,255,255,0.25) !important; color: #212529 !important; }
+.dark-mode .minimal-search-input { background: #ffffff !important; color: #212529 !important; border-color: rgba(255,255,255,0.25) !important; }
+.dark-mode .minimal-search-input::placeholder { color: #6c757d !important; }

@@ -11,7 +11,9 @@ export default class Navbar extends Component {
       username: '',
       fullName: '',
       userType: '',
-      isAdmin: false
+  isAdmin: false,
+  darkMode: localStorage.getItem('darkMode') === 'true',
+  searchQuery: new URLSearchParams(window.location.search).get('q') || ''
     };
   }
 
@@ -46,6 +48,11 @@ export default class Navbar extends Component {
         isAdmin: isAdmin
       });
     }
+
+    // Apply dark mode class if needed
+    if (this.state.darkMode) {
+      document.body.classList.add('dark-mode');
+    }
   }
 
   handleSignOut = () => {
@@ -66,8 +73,27 @@ export default class Navbar extends Component {
     window.location.href = '/';
   }
 
+  toggleDarkMode = () => {
+    this.setState(prev => ({ darkMode: !prev.darkMode }), () => {
+      localStorage.setItem('darkMode', this.state.darkMode);
+      if (this.state.darkMode) document.body.classList.add('dark-mode');
+      else document.body.classList.remove('dark-mode');
+    });
+  }
+
+  handleSearchChange = (e) => {
+    this.setState({ searchQuery: e.target.value });
+  }
+
+  submitSearch = (e) => {
+    e.preventDefault();
+    const q = (this.state.searchQuery || '').trim();
+    const url = q ? `/?q=${encodeURIComponent(q)}` : '/';
+    window.location.href = url;
+  }
+
   render() {
-    const { isLoggedIn, isAdmin, userType, fullName, username } = this.state;
+  const { isLoggedIn, isAdmin, userType, fullName, username, darkMode } = this.state;
     const userDisplayName = fullName || username;
 
     let badgeClass = 'bg-primary';
@@ -83,7 +109,7 @@ export default class Navbar extends Component {
 
     return (
       <>
-        <nav className="navbar navbar-expand-lg navbar-light bg-info">
+  <nav className="navbar navbar-expand-lg navbar-light fixed-sky fixed-top">
           <div className="container-fluid">
             <Link to="/" className="navbar-brand d-flex align-items-center">
               <img 
@@ -95,9 +121,35 @@ export default class Navbar extends Component {
               Rentacube
             </Link>
             <div className="collapse navbar-collapse">
-              <ul className="navbar-nav me-auto">
-              </ul>
+              {/* Stretched minimal search between brand and actions */}
+              <div className="flex-grow-1 mx-3">
+                <form className="d-flex w-100" onSubmit={this.submitSearch} role="search">
+                  <div className="input-group input-group-sm w-100 minimal-search-group">
+                    <span className="input-group-text search-addon">
+                      <i className="fas fa-search" aria-hidden="true"></i>
+                    </span>
+                    <input
+                      type="search"
+                      className="form-control minimal-search-input"
+                      placeholder="Search listings..."
+                      aria-label="Search"
+                      value={this.state.searchQuery}
+                      onChange={this.handleSearchChange}
+                    />
+                  </div>
+                </form>
+              </div>
               <ul className="navbar-nav ms-auto">
+                <li className="nav-item d-flex align-items-center me-2">
+                  <button
+                    onClick={this.toggleDarkMode}
+                    className="btn btn-sm btn-outline-primary"
+                    style={{ minWidth: '42px' }}
+                    title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+                  >
+                    {darkMode ? <i className="fas fa-sun"></i> : <i className="fas fa-moon"></i>}
+                  </button>
+                </li>
                 {isLoggedIn ? (
                   <>
                     {isAdmin ? (

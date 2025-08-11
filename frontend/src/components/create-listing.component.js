@@ -303,11 +303,8 @@ export default class CreateListing extends Component {
         // Reset the file input
         document.getElementById('imageInput').value = '';
         
-        // Show browser alert for confirmation
-        alert('🎉 Success! Your listing has been created successfully and is now live on Rentacube!');
-        
-        // Redirect to homepage immediately after alert is dismissed
-        window.location.replace('/');
+  // Redirect to homepage after a short delay so the success UI is visible
+  setTimeout(()=>window.location.replace('/'), 800);
       })
       .catch(err => {
         console.error('Error creating listing:', err.message || err);
