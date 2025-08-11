@@ -11,5 +11,7 @@ router.get('/admin/pending-renters', controller.pendingRenters);
 router.put('/admin/approve/:id', controller.setApproval);
 router.put('/admin/update/:id', controller.adminUpdate);
 router.delete('/admin/delete/:id', controller.adminDelete);
+// Public profile lookup
+router.get('/profile/:username', controller.publicProfile);
 
 module.exports = router;

@@ -50,14 +50,16 @@ export default class SignIn extends Component {
         console.log('isAdmin from server:', res.data.isAdmin);
         console.log('typeof isAdmin from server:', typeof res.data.isAdmin);
         
-        // Save username, fullName, userType and admin status to localStorage for navbar display
+    // Save username, fullName, userType and admin status to localStorage for navbar display
         localStorage.setItem('username', this.state.username);
         localStorage.setItem('fullName', res.data.fullName || '');
+  if (res.data.email) localStorage.setItem('email', res.data.email);
         localStorage.setItem('userType', res.data.userType || 'customer');
   localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
   if (res.data.approvalStatus) localStorage.setItem('approvalStatus', res.data.approvalStatus);
   if (res.data.phone) localStorage.setItem('phone', res.data.phone);
   if (res.data.location) localStorage.setItem('location', res.data.location);
+  if (res.data.createdAt) localStorage.setItem('createdAt', res.data.createdAt);
         localStorage.setItem('isLoggedIn', 'true');
         
         console.log('=== STORED IN LOCALSTORAGE ===');

@@ -1,13 +1,14 @@
 import React, { Component } from 'react';
 import TimePicker from './time-picker.component';
-import { ListingAPI, BookingAPI, ReviewAPI } from '../services/api';
+import { ListingAPI, BookingAPI, ReviewAPI, UserAPI } from '../services/api';
 
 export default class ListingDetail extends Component {
   constructor(props) {
     super(props);
     this.state = {
       listing: null,
-      reviews: [],
+  reviews: [],
+  ownerProfile: null,
   // Booking UI state
   bookingType: 'daily',
   // Daily
@@ -44,7 +45,15 @@ export default class ListingDetail extends Component {
         else if (data.pricing.hourly) defaultType = 'hourly';
         else if (data.pricing.monthly) defaultType = 'monthly';
       }
-      this.setState({ listing: data, loading: false, bookingType: defaultType }, () => this.recomputeEstimate());
+      this.setState({ listing: data, loading: false, bookingType: defaultType }, async () => {
+        this.recomputeEstimate();
+        try {
+          if (data?.owner) {
+            const prof = await UserAPI.getProfile(data.owner);
+            this.setState({ ownerProfile: prof.data });
+          }
+        } catch {}
+      });
     } catch (e) { this.setState({ error: 'Failed to load listing', loading: false }); }
   }
 
@@ -386,8 +395,15 @@ export default class ListingDetail extends Component {
             <div className="card">
               <div className="card-header"><h6 className="mb-0">Owner</h6></div>
               <div className="card-body">
-                <p className="mb-0"><strong>{listing.owner}</strong></p>
-                <small className="text-muted">Contact feature coming soon.</small>
+                <p className="mb-1"><strong>{listing.owner}</strong></p>
+                {this.state.ownerProfile?.phone ? (
+                  <p className="mb-1"><i className="fas fa-phone me-2"></i>{this.state.ownerProfile.phone}</p>
+                ) : (
+                  <p className="mb-1 text-muted">Phone not provided</p>
+                )}
+                {this.state.ownerProfile?.createdAt && (
+                  <small className="text-muted">Member since {new Date(this.state.ownerProfile.createdAt).toLocaleDateString()}</small>
+                )}
               </div>
             </div>
           </div>

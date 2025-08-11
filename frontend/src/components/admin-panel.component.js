@@ -116,7 +116,8 @@ export default class AdminPanel extends Component {
         username: user.username,
         fullName: user.fullName,
         email: user.email,
-        userType: user.userType
+  userType: user.userType,
+  phone: user.phone || ''
       }
     });
   }
@@ -157,7 +158,8 @@ export default class AdminPanel extends Component {
       username: editForm.username,
       fullName: editForm.fullName,
       email: editForm.email,
-      userType: editForm.userType,
+  userType: editForm.userType,
+  phone: editForm.phone,
       adminUsername: 'admin'
     })
       .then(() => {
@@ -341,6 +343,7 @@ export default class AdminPanel extends Component {
                         <th>Username</th>
                         <th>Full Name</th>
                         <th>Email</th>
+                        <th>Phone</th>
                         <th>User Type</th>
                         <th>Created At</th>
                         <th>Actions</th>
@@ -383,6 +386,19 @@ export default class AdminPanel extends Component {
                               />
                             ) : (
                               user.email
+                            )}
+                          </td>
+                          {/* Phone column */}
+                          <td>
+                            {editingUser === user._id ? (
+                              <input 
+                                type="text" 
+                                className="form-control form-control-sm"
+                                value={editForm.phone || ''}
+                                onChange={(e) => this.handleFormChange('phone', e.target.value)}
+                              />
+                            ) : (
+                              user.phone || '-'
                             )}
                           </td>
                           <td>

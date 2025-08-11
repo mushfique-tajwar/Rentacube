@@ -44,15 +44,35 @@ export default class Dashboard extends Component {
   BookingAPI.autoComplete().catch(()=>{});
   }
 
-  loadUserData = (username) => {
+  loadUserData = async (username) => {
+    // Seed from localStorage for instant paint
     this.setState({ user: { 
       username,
       fullName: localStorage.getItem('fullName') || username,
       email: localStorage.getItem('email') || `${username}@example.com`,
       phone: localStorage.getItem('phone') || '',
       location: localStorage.getItem('location') || '' ,
-      createdAt: ''
+      createdAt: localStorage.getItem('createdAt') ? new Date(localStorage.getItem('createdAt')).toLocaleDateString() : ''
     } });
+    // Fetch authoritative profile from server (fills phone/createdAt reliably)
+    try {
+      const { data } = await UserAPI.getProfile(username);
+      const updated = {
+        username: data.username || username,
+        fullName: data.fullName || localStorage.getItem('fullName') || username,
+        email: data.email || localStorage.getItem('email') || `${username}@example.com`,
+        phone: data.phone || '',
+        location: data.location || '',
+        createdAt: data.createdAt ? new Date(data.createdAt).toLocaleDateString() : ''
+      };
+      // Persist to localStorage for other components
+      localStorage.setItem('fullName', updated.fullName || '');
+      if (updated.email) localStorage.setItem('email', updated.email);
+      localStorage.setItem('phone', updated.phone || '');
+      localStorage.setItem('location', updated.location || '');
+      if (data.createdAt) localStorage.setItem('createdAt', data.createdAt);
+      this.setState({ user: updated });
+    } catch { /* ignore, keep local values */ }
   }
 
   loadListings = async (owner) => {
@@ -177,14 +197,14 @@ export default class Dashboard extends Component {
   }
 
   handleRequestRenter = async () => {
-    const approvalStatus = localStorage.getItem('approvalStatus');
-    if (approvalStatus === 'rejected') {
-      this.setState({ message: 'Your previous renter application was rejected. Please contact support.' });
+  // Allow re-applying even if previously rejected; backend will set status to pending
+    if (!this.state.user.phone) {
+      this.setState({ message: 'Please add a phone number to your profile before applying to become a renter.' });
       return;
     }
     try {
-      const { username } = this.state.user;
-      const { data } = await UserAPI.requestRenter({ username });
+  const { username, phone } = this.state.user;
+  const { data } = await UserAPI.requestRenter({ username, phone });
       localStorage.setItem('userType', data.userType);
       localStorage.setItem('approvalStatus', data.approvalStatus);
   this.userType = (data.userType || '').toLowerCase();
@@ -512,12 +532,15 @@ export default class Dashboard extends Component {
             </div>
           </div>
           <div className="d-flex gap-2">
-            <button className="btn btn-primary" onClick={this.handleSaveProfile}>Save Profile</button>
-            <button className="btn btn-outline-primary" onClick={this.handleChangePassword}>Change Password</button>
+            <button type="button" className="btn btn-primary" onClick={this.handleSaveProfile}>Save Profile</button>
+            <button type="button" className="btn btn-outline-primary" onClick={this.handleChangePassword}>Change Password</button>
             {this.userType !== 'renter' && (
-              <button className="btn btn-warning" onClick={this.handleRequestRenter}>Apply as Renter</button>
+              <button type="button" className="btn btn-warning" onClick={this.handleRequestRenter}>Apply as Renter</button>
             )}
           </div>
+          {this.state.message && (
+            <div className="alert alert-info mt-3 py-2 mb-0">{this.state.message}</div>
+          )}
         </form>
       </div>
     </div>

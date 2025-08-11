@@ -12,9 +12,12 @@ exports.register = async (req, res) => {
   try {
     if (await userService.findByUsername(username)) return res.status(400).json('Username already exists');
     if (await userService.findByEmail(email)) return res.status(400).json('Email already exists');
+    if (String(userType).toLowerCase() === 'renter' && !String(phone).trim()) {
+      return res.status(400).json('Phone number is required to register as a renter');
+    }
   const approvalStatus = userType === 'renter' ? 'pending' : 'approved';
   const user = await userService.create({ username, fullName, email, password, userType, phone, location, approvalStatus });
-  res.json({ message: 'User added!', username: user.username, fullName: user.fullName, userType: user.userType, phone: user.phone, location: user.location, approvalStatus: user.approvalStatus, isAdmin: user.username === 'admin' });
+  res.json({ message: 'User added!', username: user.username, fullName: user.fullName, email: user.email, userType: user.userType, phone: user.phone, location: user.location, approvalStatus: user.approvalStatus, createdAt: user.createdAt, isAdmin: user.username === 'admin' });
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
@@ -25,7 +28,7 @@ exports.login = async (req, res) => {
     if (!user) return res.status(400).json('User not found');
     const valid = await user.comparePassword(password);
     if (!valid) return res.status(400).json('Invalid password');
-    res.json({ message: 'Login successful', username: user.username, fullName: user.fullName, email: user.email, userType: user.userType, approvalStatus: user.approvalStatus, phone: user.phone, location: user.location, isAdmin: user.username === 'admin' });
+  res.json({ message: 'Login successful', username: user.username, fullName: user.fullName, email: user.email, userType: user.userType, approvalStatus: user.approvalStatus, phone: user.phone, location: user.location, createdAt: user.createdAt, isAdmin: user.username === 'admin' });
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
@@ -76,17 +79,24 @@ exports.changePassword = async (req, res) => {
 };
 
 exports.requestRenter = async (req, res) => {
-  const { username } = req.body;
+  const { username, phone } = req.body;
   try {
     const user = await userService.findByUsername(username);
     if (!user) return res.status(404).json('User not found');
     if (user.userType === 'renter' && user.approvalStatus === 'approved') {
       return res.status(400).json('Already a renter');
     }
+    // Allow providing phone during request; set it before validation
+    if ((!user.phone || !String(user.phone).trim()) && phone && String(phone).trim()) {
+      user.phone = String(phone).trim();
+    }
+    if (!user.phone || !String(user.phone).trim()) {
+      return res.status(400).json('Phone number required to become a renter. Please update your profile.');
+    }
     user.userType = 'renter';
     user.approvalStatus = 'pending';
     await user.save();
-    res.json({ message: 'Renter request submitted for approval', approvalStatus: user.approvalStatus, userType: user.userType });
+    res.json({ message: 'Renter request submitted for approval', approvalStatus: user.approvalStatus, userType: user.userType, phone: user.phone });
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
@@ -101,9 +111,27 @@ exports.adminUpdate = async (req, res) => {
       email: req.body.email || user.email,
       userType: req.body.userType || user.userType
     });
+    if (req.body.phone !== undefined) user.phone = req.body.phone;
     if (req.body.password) user.password = req.body.password;
     await user.save();
     res.json('User updated successfully!');
+  } catch (e) { res.status(400).json('Error: ' + e.message); }
+};
+
+// Public profile lookup by username (safe fields only)
+exports.publicProfile = async (req, res) => {
+  try {
+    const user = await userService.findByUsername(req.params.username);
+    if (!user) return res.status(404).json('User not found');
+    return res.json({
+      username: user.username,
+      fullName: user.fullName,
+      phone: user.phone || '',
+      location: user.location || '',
+      userType: user.userType,
+      approvalStatus: user.approvalStatus,
+      createdAt: user.createdAt
+    });
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 

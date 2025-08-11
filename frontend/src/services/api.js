@@ -15,7 +15,8 @@ export const UserAPI = {
   changePassword: (data) => api.put('/users/password', data),
   requestRenter: (data) => api.post('/users/request-renter', data),
   pendingRenters: () => api.get('/users/admin/pending-renters', { params: { adminUsername: 'admin' } }),
-  approveRenter: (id, status) => api.put(`/users/admin/approve/${id}`, { status, adminUsername: 'admin' })
+  approveRenter: (id, status) => api.put(`/users/admin/approve/${id}`, { status, adminUsername: 'admin' }),
+  getProfile: (username) => api.get(`/users/profile/${encodeURIComponent(username)}`)
 };
 
 export const ListingAPI = {

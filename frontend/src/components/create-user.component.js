@@ -64,8 +64,11 @@ export default class CreateUser extends Component {
   }
 
   onChangeUserType(e) {
-    this.setState({
-      userType: e.target.value
+    const nextType = e.target.value;
+    this.setState({ userType: nextType }, () => {
+      if (nextType === 'renter' && !this.state.phone) {
+        this.setState({ message: 'Phone number is required to register as a renter.' });
+      }
     });
   }
 
@@ -79,7 +82,7 @@ export default class CreateUser extends Component {
       return;
     }
 
-    const user = {
+  const user = {
       username: this.state.username,
       fullName: this.state.fullName,
       email: this.state.email,
@@ -95,12 +98,14 @@ export default class CreateUser extends Component {
       .then(res => {
         console.log('User created successfully:', res.data);
         // Save username, fullName and userType to localStorage for navbar display
-        localStorage.setItem('username', this.state.username);
-        localStorage.setItem('fullName', res.data.fullName || this.state.fullName);
+  localStorage.setItem('username', this.state.username);
+  localStorage.setItem('fullName', res.data.fullName || this.state.fullName);
+  if (res.data.email || this.state.email) localStorage.setItem('email', res.data.email || this.state.email);
   localStorage.setItem('userType', res.data.userType || this.state.userType);
     if (res.data.approvalStatus) localStorage.setItem('approvalStatus', res.data.approvalStatus);
   localStorage.setItem('phone', res.data.phone || this.state.phone || '');
-        localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
+  localStorage.setItem('isAdmin', JSON.stringify(res.data.isAdmin || false));
+  if (res.data.createdAt) localStorage.setItem('createdAt', res.data.createdAt);
         localStorage.setItem('isLoggedIn', 'true');
         this.setState({
           message: 'User created successfully!',
@@ -207,14 +212,15 @@ export default class CreateUser extends Component {
               <div className="form-text text-danger">Passwords do not match</div>
             )}
           </div>
-          <div className="form-group mb-3">
+      <div className="form-group mb-3">
             <label className="form-label mb-2">Phone Number:</label>
             <input 
               type="tel" 
               className="form-control"
               value={this.state.phone}
               onChange={this.onChangePhone}
-              placeholder="Optional phone number"
+        placeholder={this.state.userType === 'renter' ? 'Required for renters' : 'Optional phone number'}
+        required={this.state.userType === 'renter'}
             />
           </div>
           <div className="form-group mb-3">
