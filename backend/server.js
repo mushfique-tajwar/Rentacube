@@ -11,7 +11,6 @@ app.use(express.json());
 
 connectDB();
 
-// Routes
 app.use('/users', require('./src/routes/user.routes'));
 app.use('/listings', require('./src/routes/listing.routes'));
 
