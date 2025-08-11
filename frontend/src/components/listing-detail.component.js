@@ -53,10 +53,13 @@ export default class ListingDetail extends Component {
   }
 
   render() {
-    const { listing, reviews, loading, error } = this.state;
+  const { listing, reviews, loading, error } = this.state;
     if (loading) return <div className="container mt-4"><p>Loading...</p></div>;
     if (error) return <div className="container mt-4"><div className="alert alert-danger">{error}</div></div>;
     if (!listing) return null;
+
+  const username = localStorage.getItem('username');
+  const isOwner = username && listing.owner === username;
 
     return (
       <div className="container mt-4 mb-5">
@@ -99,23 +102,98 @@ export default class ListingDetail extends Component {
           </div>
 
           <div className="col-md-5">
-            <div className="card mb-4">
-              <div className="card-header"><h5 className="mb-0">Book this Item</h5></div>
-              <div className="card-body">
-                <form onSubmit={this.book}>
-                  <div className="mb-3" onClick={()=>this.startInput && this.startInput.showPicker && this.startInput.showPicker()} style={{cursor:'pointer'}}>
-                    <label className="form-label">Start Date</label>
-                    <input ref={el=>this.startInput=el} type="date" className="form-control" value={this.state.startDate} onChange={e=>this.setState({startDate:e.target.value})} />
-                  </div>
-                  <div className="mb-3" onClick={()=>this.endInput && this.endInput.showPicker && this.endInput.showPicker()} style={{cursor:'pointer'}}>
-                    <label className="form-label">End Date</label>
-                    <input ref={el=>this.endInput=el} type="date" className="form-control" value={this.state.endDate} onChange={e=>this.setState({endDate:e.target.value})} />
-                  </div>
-                  <button className="btn btn-primary w-100" type="submit">Request Booking</button>
-                </form>
-                {this.state.bookingMessage && <div className="alert alert-info mt-3 py-2 mb-0">{this.state.bookingMessage}</div>}
+            {!isOwner ? (
+              <div className="card mb-4">
+                <div className="card-header"><h5 className="mb-0">Book this Item</h5></div>
+                <div className="card-body">
+                  <form onSubmit={this.book}>
+                    <div className="mb-3" onClick={()=>this.startInput && this.startInput.showPicker && this.startInput.showPicker()} style={{cursor:'pointer'}}>
+                      <label className="form-label">Start Date</label>
+                      <input ref={el=>this.startInput=el} type="date" className="form-control" value={this.state.startDate} onChange={e=>this.setState({startDate:e.target.value})} />
+                    </div>
+                    <div className="mb-3" onClick={()=>this.endInput && this.endInput.showPicker && this.endInput.showPicker()} style={{cursor:'pointer'}}>
+                      <label className="form-label">End Date</label>
+                      <input ref={el=>this.endInput=el} type="date" className="form-control" value={this.state.endDate} onChange={e=>this.setState({endDate:e.target.value})} />
+                    </div>
+                    <button className="btn btn-primary w-100" type="submit">Request Booking</button>
+                  </form>
+                  {this.state.bookingMessage && <div className="alert alert-info mt-3 py-2 mb-0">{this.state.bookingMessage}</div>}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="card mb-4">
+                <div className="card-header"><h5 className="mb-0">Manage Listing</h5></div>
+                <div className="card-body">
+                  {!this.state.editMode ? (
+                    <div className="d-grid gap-2">
+                      <button className="btn btn-outline-primary" onClick={()=>this.setState({ editMode:true, editName: listing.name, editDescription: listing.description, editHourly: listing.pricing?.hourly || '', editDaily: listing.pricing?.daily || '', editMonthly: listing.pricing?.monthly || '', editImage: null })}>Edit Listing</button>
+                      <button className="btn btn-outline-danger" onClick={async ()=>{
+                        try {
+                          await ListingAPI.softDelete(listing._id, username);
+                          window.location.replace('/');
+                        } catch(e) { this.setState({ bookingMessage: e.response?.data || 'Failed to delete listing' }); }
+                      }}>Delete Listing</button>
+                    </div>
+                  ) : (
+                    <form onSubmit={async (e)=>{
+                      e.preventDefault();
+                      try {
+                        if (this.state.editImage) {
+                          const form = new FormData();
+                          form.append('owner', username);
+                          form.append('name', this.state.editName||'');
+                          form.append('description', this.state.editDescription||'');
+                          if (this.state.editHourly !== '') form.append('pricingHourly', this.state.editHourly);
+                          if (this.state.editDaily !== '') form.append('pricingDaily', this.state.editDaily);
+                          if (this.state.editMonthly !== '') form.append('pricingMonthly', this.state.editMonthly);
+                          form.append('image', this.state.editImage);
+                          await ListingAPI.update(listing._id, form);
+                        } else {
+                          const payload = { owner: username, name: this.state.editName||'', description: this.state.editDescription||'' };
+                          if (this.state.editHourly !== '') payload.pricingHourly = this.state.editHourly;
+                          if (this.state.editDaily !== '') payload.pricingDaily = this.state.editDaily;
+                          if (this.state.editMonthly !== '') payload.pricingMonthly = this.state.editMonthly;
+                          await ListingAPI.update(listing._id, payload);
+                        }
+                        await this.loadListing(listing._id);
+                        this.setState({ editMode:false, bookingMessage: 'Listing updated successfully.' });
+                      } catch(err) { this.setState({ bookingMessage: err.response?.data || 'Failed to update listing' }); }
+                    }}>
+                      <div className="mb-2">
+                        <label className="form-label">Title</label>
+                        <input className="form-control" value={this.state.editName||''} onChange={(e)=>this.setState({editName:e.target.value})} />
+                      </div>
+                      <div className="mb-2">
+                        <label className="form-label">Description</label>
+                        <textarea className="form-control" rows="3" value={this.state.editDescription||''} onChange={(e)=>this.setState({editDescription:e.target.value})} />
+                      </div>
+                      <div className="row g-2 mb-2">
+                        <div className="col-4">
+                          <label className="form-label">Hourly</label>
+                          <input className="form-control" value={this.state.editHourly||''} onChange={(e)=>this.setState({editHourly:e.target.value})} />
+                        </div>
+                        <div className="col-4">
+                          <label className="form-label">Daily</label>
+                          <input className="form-control" value={this.state.editDaily||''} onChange={(e)=>this.setState({editDaily:e.target.value})} />
+                        </div>
+                        <div className="col-4">
+                          <label className="form-label">Monthly</label>
+                          <input className="form-control" value={this.state.editMonthly||''} onChange={(e)=>this.setState({editMonthly:e.target.value})} />
+                        </div>
+                      </div>
+                      <div className="mb-3">
+                        <label className="form-label">Replace Image</label>
+                        <input type="file" accept="image/*" className="form-control" onChange={(e)=>this.setState({editImage:e.target.files?.[0]||null})} />
+                      </div>
+                      <div className="d-flex gap-2">
+                        <button className="btn btn-primary" type="submit">Save</button>
+                        <button className="btn btn-secondary" type="button" onClick={()=>this.setState({ editMode:false })}>Cancel</button>
+                      </div>
+                    </form>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="card">
               <div className="card-header"><h6 className="mb-0">Owner</h6></div>
               <div className="card-body">

@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import { BookingAPI, ReviewAPI, UserAPI } from '../services/api';
+import { ListingAPI } from '../services/api';
 
 export default class Dashboard extends Component {
   constructor(props) {
@@ -29,7 +30,15 @@ export default class Dashboard extends Component {
     this.username = username;
   this.userType = localStorage.getItem('userType');
   this.isAdmin = localStorage.getItem('isAdmin') === 'true';
+    if (this.isAdmin) {
+      // Admins are not allowed on user dashboard
+      window.location.href = '/admin';
+      return;
+    }
     this.loadUserData(username);
+    if ((localStorage.getItem('userType') || '').toLowerCase() === 'renter') {
+      this.loadListings(username);
+    }
     this.loadBookings(username);
   // Kick off an auto-complete on load (no-op if none due)
   BookingAPI.autoComplete().catch(()=>{});
@@ -44,6 +53,31 @@ export default class Dashboard extends Component {
       location: localStorage.getItem('location') || '' ,
       createdAt: ''
     } });
+  }
+
+  loadListings = async (owner) => {
+    try {
+      const { data } = await ListingAPI.byOwner(owner);
+      const listings = data.map(l => ({
+        id: l._id,
+        title: l.name,
+        pricing: l.pricing || {},
+        status: l.isActive ? 'Active' : 'Inactive',
+        views: l.views || 0
+      }));
+      this.setState({ listings }, this.updateAnalyticsFromState);
+    } catch (e) {
+      // Non-fatal
+    }
+  }
+
+  // Helper copied from homepage: compute daily-equivalent price
+  getComparablePrice = (listing) => {
+    const p = listing.pricing || {};
+    if (p.daily) return p.daily;
+    if (p.hourly) return p.hourly * 24;
+    if (p.monthly) return Math.round(p.monthly / 30);
+    return listing.pricePerDay || 0;
   }
 
   loadBookings = async (username) => {
@@ -61,11 +95,26 @@ export default class Dashboard extends Component {
   paymentStatus: b.paymentStatus || 'Unpaid',
         canReview: b.status === 'Completed' && b.customerUsername === username
       }));
-      this.setState({ bookings, isLoading: false });
+      this.setState({ bookings, isLoading: false }, this.updateAnalyticsFromState);
     } catch (e) {
       console.error(e);
       this.setState({ isLoading: false, message: 'Failed to load bookings' });
     }
+  }
+
+  updateAnalyticsFromState = () => {
+    const totalViews = (this.state.listings || []).reduce((sum, l) => sum + (l.views || 0), 0);
+    const completedBookings = (this.state.bookings || []).filter(b => b.status === 'Completed').length;
+    // Estimate total earnings: sum of totalPrice for Completed where renterUsername === current user
+    const totalEarnings = (this.state.bookings || []).reduce((sum, b) => {
+      if (b.status === 'Completed' && b.renterUsername === this.username) {
+        const n = Number((b.amount || '').replace(/[^0-9.]/g, '')) || 0;
+        return sum + n;
+      }
+      return sum;
+    }, 0);
+    const activeListings = (this.state.listings || []).filter(l => l.status === 'Active').length;
+    this.setState({ analytics: { totalViews, totalEarnings, activeListings, completedBookings } });
   }
 
   updateBookingStatus = async (bookingId, status) => {
@@ -165,20 +214,67 @@ export default class Dashboard extends Component {
             <div className="card-header"><h5>My Listings</h5></div>
             <div className="card-body">
               {this.state.listings.length === 0 ? <p className="text-muted">No listings yet</p> : this.state.listings.map(l => (
-                <div key={l.id} className="border-bottom pb-2 mb-2" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${l.id}` }>
+                <div key={l.id} className="border-bottom pb-2 mb-2">
                   <div className="d-flex justify-content-between">
-                    <div>
-                      <h6 className="mb-1">{l.title}</h6>
-                      <p className="mb-1 text-muted">{l.price}</p>
+                    <div style={{maxWidth:'70%'}}>
+                      {this.state.editListingId === l.id ? (
+                        <>
+                          <input className="form-control form-control-sm mb-1" value={this.state.editTitle||''} onChange={(e)=>this.setState({editTitle:e.target.value})} />
+                          <div className="row g-1">
+                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Hourly" value={this.state.editHourly||''} onChange={(e)=>this.setState({editHourly:e.target.value})} /></div>
+                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Daily" value={this.state.editDaily||''} onChange={(e)=>this.setState({editDaily:e.target.value})} /></div>
+                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Monthly" value={this.state.editMonthly||''} onChange={(e)=>this.setState({editMonthly:e.target.value})} /></div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <h6 className="mb-1" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${l.id}` }>{l.title}</h6>
+                          <div className="mb-1">
+                            {l.pricing?.hourly ? <span className="badge bg-primary me-1">${l.pricing.hourly}/hr</span> : null}
+                            {l.pricing?.daily ? <span className="badge bg-success me-1">${l.pricing.daily}/day</span> : null}
+                            {l.pricing?.monthly ? <span className="badge bg-info me-1">${l.pricing.monthly}/mo</span> : null}
+                            {!l.pricing?.hourly && !l.pricing?.daily && !l.pricing?.monthly && (
+                              <span className="text-muted">Price on request</span>
+                            )}
+                          </div>
+                        </>
+                      )}
                     </div>
                     <div className="text-end">
                       <span className={`badge ${l.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>{l.status}</span>
                       <p className="mb-0 small text-muted">{l.views} views</p>
                     </div>
                   </div>
+                  <div className="d-flex gap-2 mt-1">
+                    {this.state.editListingId === l.id ? (
+                      <>
+            <button className="btn btn-success btn-sm" onClick={async ()=>{
+                          try {
+              const payload = { owner: this.username, name: this.state.editTitle };
+              if (this.state.editHourly !== '') payload.pricingHourly = this.state.editHourly;
+              if (this.state.editDaily !== '') payload.pricingDaily = this.state.editDaily;
+              if (this.state.editMonthly !== '') payload.pricingMonthly = this.state.editMonthly;
+              await ListingAPI.update(l.id, payload);
+                            this.setState({ editListingId:null, editTitle:'', editHourly:'', editDaily:'', editMonthly:'' });
+                            this.loadListings(this.username);
+                            this.setState({ message: 'Listing updated.' });
+                          } catch (e) { this.setState({ message: 'Failed to update listing' }); }
+                        }}>Save</button>
+                        <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ editListingId:null })}>Cancel</button>
+                      </>
+                    ) : (
+                      <button className="btn btn-outline-primary btn-sm" onClick={()=>this.setState({ 
+                        editListingId: l.id,
+                        editTitle: l.title,
+                        editHourly: l.pricing?.hourly ?? '',
+                        editDaily: l.pricing?.daily ?? '',
+                        editMonthly: l.pricing?.monthly ?? ''
+                      })}>Edit</button>
+                    )}
+                  </div>
                 </div>
               ))}
-              <button className="btn btn-primary btn-sm mt-2">Add New Listing</button>
+              <button className="btn btn-primary btn-sm mt-2" onClick={()=>window.location.href='/create-listing'}>Add New Listing</button>
             </div>
           </div>
         </div>
@@ -217,13 +313,19 @@ export default class Dashboard extends Component {
                         <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
                       </div>
                     )}
+                    {/* Renter can mark as Paid if collected cash or verify payment */}
+                    {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Unpaid' && b.status !== 'Cancelled' && (
+                      <div className="mb-1">
+                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'cash', payRef: '' })}>Mark Paid (renter)</button>
+                      </div>
+                    )}
                     {/* Customer payment actions */}
                     {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
                       <div className="mb-1">
                         <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Mark as Paid</button>
                       </div>
                     )}
-                    {this.state.showPayFor === b.id && (
+        {this.state.showPayFor === b.id && (
                       <div className="border rounded p-2 mt-2">
                         <div className="mb-2">
                           <label className="form-label mb-1">Payment Method</label>
@@ -240,7 +342,7 @@ export default class Dashboard extends Component {
                         </div>
                         <div className="d-flex gap-2">
                           <button className="btn btn-success btn-sm" onClick={async ()=>{
-                            try { await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef }); this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to mark as paid' }); }
+          try { await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef }); this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to mark as paid' }); }
                           }}>Save</button>
                           <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
                         </div>
@@ -405,7 +507,7 @@ export default class Dashboard extends Component {
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+    {/* Navigation Tabs */}
         <ul className="nav nav-tabs mb-4 app-tabs">
           <li className="nav-item">
             <button 
@@ -415,16 +517,14 @@ export default class Dashboard extends Component {
               Profile
             </button>
           </li>
-          {this.userType === 'renter' && (
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'listings' ? 'active' : ''}`}
               onClick={() => this.setActiveTab('listings')}
             >
-              Listings & Bookings
+      {this.userType === 'renter' ? 'Listings & Bookings' : 'Bookings'}
             </button>
           </li>
-          )}
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'analytics' ? 'active' : ''}`}

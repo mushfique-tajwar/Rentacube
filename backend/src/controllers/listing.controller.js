@@ -74,7 +74,16 @@ exports.update = async (req, res) => {
     listing.name = req.body.name || listing.name;
     listing.description = req.body.description || listing.description;
     listing.category = req.body.category || listing.category;
-    listing.image = req.body.image !== undefined ? req.body.image : listing.image;
+    if (req.file) {
+      // Replace image file if provided
+      if (listing.image) {
+        const prevPath = path.join(__dirname, '../../../frontend/public/images/listings', listing.image);
+        fs.unlink(prevPath, ()=>{});
+      }
+      listing.image = req.file.filename;
+    } else if (req.body.image !== undefined) {
+      listing.image = req.body.image; // allows clearing
+    }
     listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
     await listing.save();
     res.json('Listing updated successfully!');

@@ -240,7 +240,7 @@ export default class AdminPanel extends Component {
   }
 
   render() {
-    const { activeTab, users, listings, isLoading, message, editingUser, editingListing, editForm } = this.state;
+    const { activeTab, users, listings, isLoading, message, editingUser, editingListing, editForm, confirmAction } = this.state;
 
     return (
       <div className="container-fluid mt-4">
@@ -252,6 +252,44 @@ export default class AdminPanel extends Component {
           <div className={`alert ${message.includes('Error') || message.includes('denied') ? 'alert-danger' : 'alert-success'}`}>
             {message}
           </div>
+        )}
+
+        {confirmAction && (
+          <>
+            {/* Backdrop */}
+            <div style={{position:'fixed', inset:0, background:'rgba(0,0,0,0.5)', zIndex:1040}} onClick={() => this.setState({ confirmAction: null })} />
+            {/* Modal */}
+            <div style={{position:'fixed', top:'50%', left:'50%', transform:'translate(-50%, -50%)', zIndex:1050, maxWidth:'480px', width:'90%'}} role="dialog" aria-modal="true">
+              <div className="card shadow-lg">
+                <div className="card-header bg-warning text-dark">
+                  <h5 className="mb-0"><i className="fas fa-exclamation-triangle me-2"></i>Confirm Deletion</h5>
+                </div>
+                <div className="card-body">
+                  <p className="mb-0">{confirmAction.text}</p>
+                </div>
+                <div className="card-footer d-flex justify-content-end gap-2">
+                  <button className="btn btn-secondary" onClick={() => this.setState({ confirmAction: null })}>Cancel</button>
+                  <button className="btn btn-danger" onClick={async () => {
+                    try {
+                      if (confirmAction.type === 'delete-user') {
+                        await axios.delete(`http://localhost:3000/users/admin/delete/${confirmAction.id}`, { data: { adminUsername: 'admin' } });
+                        this.setState({ message: 'User deleted successfully!' });
+                        this.fetchUsers();
+                      } else if (confirmAction.type === 'delete-listing') {
+                        await axios.delete(`http://localhost:3000/listings/admin/delete/${confirmAction.id}`, { data: { adminUsername: 'admin' } });
+                        this.setState({ message: 'Listing deleted successfully!' });
+                        this.fetchListings();
+                      }
+                    } catch (error) {
+                      this.setState({ message: 'Error: ' + (error.response?.data || error.message) });
+                    } finally {
+                      this.setState({ confirmAction: null });
+                    }
+                  }}>Confirm</button>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {/* Navigation Tabs */}

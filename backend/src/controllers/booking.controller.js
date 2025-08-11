@@ -19,6 +19,8 @@ exports.create = async (req, res) => {
     if (!listingId || !customerUsername || !startDate || !endDate) return res.status(400).json('Missing required fields');
     const listing = await listingService.findById(listingId);
     if (!listing || !listing.isActive) return res.status(404).json('Listing not available');
+  // Prevent booking own listing
+  if (String(listing.owner) === String(customerUsername)) return res.status(400).json('You cannot book your own listing');
     // Ensure listing owner (renter) is approved
     const userService = require('../services/user.service');
     const renter = await userService.findByUsername(listing.owner);

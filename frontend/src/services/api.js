@@ -18,7 +18,10 @@ export const UserAPI = {
 export const ListingAPI = {
   create: (formData) => api.post('/listings/create', formData, { headers: { 'Content-Type': 'multipart/form-data' } }),
   all: (params) => api.get('/listings', { params }),
-  byId: (id) => api.get(`/listings/${id}`)
+  byId: (id) => api.get(`/listings/${id}`),
+  byOwner: (owner) => api.get(`/listings/owner/${owner}`),
+  update: (id, data) => api.put(`/listings/update/${id}`, data),
+  softDelete: (id, owner) => api.delete(`/listings/${id}`, { data: { owner } })
 };
 
 export const BookingAPI = {
