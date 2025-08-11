@@ -8,6 +8,7 @@ const bookingSchema = new mongoose.Schema({
   listing: { type: mongoose.Schema.Types.ObjectId, ref: 'Listing', required: true },
   renterUsername: { type: String, required: true, trim: true }, // owner of listing (for quick access)
   customerUsername: { type: String, required: true, trim: true },
+  bookingType: { type: String, enum: ['hourly','daily','monthly'], default: 'daily' },
   startDate: { type: Date, required: true },
   endDate: { type: Date, required: true },
   status: { type: String, enum: ['Pending','Confirmed','Cancelled','Completed'], default: 'Pending' },

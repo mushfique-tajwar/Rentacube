@@ -12,4 +12,12 @@ module.exports = {
     listing.isActive = false;
     return listing.save();
   },
+  freeExpired: async (now = new Date()) => {
+    // Set status back to available for listings whose booking window has passed
+    const res = await Listing.updateMany(
+      { status: 'booked', bookedUntil: { $lt: now } },
+      { status: 'available', $unset: { bookedFrom: "", bookedUntil: "" } }
+    );
+    return res.modifiedCount || res.nModified || 0;
+  },
 };

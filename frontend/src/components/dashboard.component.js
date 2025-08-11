@@ -28,7 +28,7 @@ export default class Dashboard extends Component {
       return;
     }
     this.username = username;
-  this.userType = localStorage.getItem('userType');
+  this.userType = (localStorage.getItem('userType') || '').toLowerCase();
   this.isAdmin = localStorage.getItem('isAdmin') === 'true';
     if (this.isAdmin) {
       // Admins are not allowed on user dashboard
@@ -62,7 +62,8 @@ export default class Dashboard extends Component {
         id: l._id,
         title: l.name,
         pricing: l.pricing || {},
-        status: l.isActive ? 'Active' : 'Inactive',
+  status: l.isActive ? 'Active' : 'Inactive',
+  availability: l.status || 'available',
         views: l.views || 0
       }));
       this.setState({ listings }, this.updateAnalyticsFromState);
@@ -122,7 +123,10 @@ export default class Dashboard extends Component {
       await BookingAPI.updateStatus(bookingId, status);
       this.loadBookings(this.username);
       this.setState({ message: 'Booking status updated.' });
-    } catch (e) { this.setState({ message: 'Failed to update status' }); }
+    } catch (e) {
+      const msg = e?.response?.data || e?.message || 'Failed to update status';
+      this.setState({ message: msg });
+    }
   }
 
   submitReview = async (bookingId, listingId) => {
@@ -139,11 +143,15 @@ export default class Dashboard extends Component {
     try {
       await ReviewAPI.create({ bookingId, listingId, rating, comment, customerUsername: this.username });
       this.setState(prev => ({ reviewsGiven: { ...prev.reviewsGiven, [bookingId]: true }, showReviewForm: null, reviewRating: '', reviewComment: '', message: 'Review submitted.' }));
-    } catch (e) { this.setState({ message: 'Failed to submit review' }); }
+    } catch (e) {
+      const msg = e?.response?.data || e?.message || 'Failed to submit review';
+      this.setState({ message: msg });
+    }
   }
 
   setActiveTab = (tab) => {
-    this.setState({ activeTab: tab });
+  if (tab === 'analytics' && this.userType !== 'renter') return; // prevent customers from accessing analytics
+  this.setState({ activeTab: tab });
   }
 
   handleSaveProfile = async () => {
@@ -179,7 +187,7 @@ export default class Dashboard extends Component {
       const { data } = await UserAPI.requestRenter({ username });
       localStorage.setItem('userType', data.userType);
       localStorage.setItem('approvalStatus', data.approvalStatus);
-      this.userType = data.userType;
+  this.userType = (data.userType || '').toLowerCase();
       this.setState({ message: data.message + ' Your account is now pending approval.' });
     } catch (e) {
       this.setState({ message: e.response?.data || 'Failed to submit renter request' });
@@ -225,6 +233,13 @@ export default class Dashboard extends Component {
                             <div className="col-4"><input className="form-control form-control-sm" placeholder="Daily" value={this.state.editDaily||''} onChange={(e)=>this.setState({editDaily:e.target.value})} /></div>
                             <div className="col-4"><input className="form-control form-control-sm" placeholder="Monthly" value={this.state.editMonthly||''} onChange={(e)=>this.setState({editMonthly:e.target.value})} /></div>
                           </div>
+                          <div className="mt-2">
+                            <label className="form-label mb-1 small">Status</label>
+                            <select className="form-select form-select-sm" value={this.state.editStatus||'available'} onChange={(e)=>this.setState({editStatus:e.target.value})}>
+                              <option value="available">Available</option>
+                              <option value="unavailable">Unavailable</option>
+                            </select>
+                          </div>
                         </>
                       ) : (
                         <>
@@ -236,6 +251,7 @@ export default class Dashboard extends Component {
                             {!l.pricing?.hourly && !l.pricing?.daily && !l.pricing?.monthly && (
                               <span className="text-muted">Price on request</span>
                             )}
+                            <span className={`badge ms-2 ${l.availability==='available'?'bg-success':l.availability==='booked'?'bg-danger':'bg-secondary'}`}>{l.availability}</span>
                           </div>
                         </>
                       )}
@@ -254,6 +270,7 @@ export default class Dashboard extends Component {
               if (this.state.editHourly !== '') payload.pricingHourly = this.state.editHourly;
               if (this.state.editDaily !== '') payload.pricingDaily = this.state.editDaily;
               if (this.state.editMonthly !== '') payload.pricingMonthly = this.state.editMonthly;
+              if (this.state.editStatus) payload.status = this.state.editStatus;
               await ListingAPI.update(l.id, payload);
                             this.setState({ editListingId:null, editTitle:'', editHourly:'', editDaily:'', editMonthly:'' });
                             this.loadListings(this.username);
@@ -268,7 +285,8 @@ export default class Dashboard extends Component {
                         editTitle: l.title,
                         editHourly: l.pricing?.hourly ?? '',
                         editDaily: l.pricing?.daily ?? '',
-                        editMonthly: l.pricing?.monthly ?? ''
+                        editMonthly: l.pricing?.monthly ?? '',
+                        editStatus: l.availability || 'available'
                       })}>Edit</button>
                     )}
                   </div>
@@ -322,7 +340,7 @@ export default class Dashboard extends Component {
                     {/* Customer payment actions */}
                     {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
                       <div className="mb-1">
-                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Mark as Paid</button>
+                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
                       </div>
                     )}
         {this.state.showPayFor === b.id && (
@@ -342,7 +360,19 @@ export default class Dashboard extends Component {
                         </div>
                         <div className="d-flex gap-2">
                           <button className="btn btn-success btn-sm" onClick={async ()=>{
-          try { await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef }); this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to mark as paid' }); }
+                            // Basic client-side validation: require a reference for non-cash methods
+                            if ((this.state.payMethod || 'bkash') !== 'cash' && !this.state.payRef) {
+                              this.setState({ message: 'Please provide a payment reference/transaction ID.' });
+                              return;
+                            }
+                            try {
+                              await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef });
+                              this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' });
+                              this.loadBookings(this.username);
+                            } catch(e){
+                              const msg = e?.response?.data || e?.message || 'Failed to mark as paid';
+                              this.setState({ message: msg });
+                            }
                           }}>Save</button>
                           <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
                         </div>
@@ -351,7 +381,16 @@ export default class Dashboard extends Component {
                     {/* Renter settlement action */}
                     {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Paid' && (
                       <div className="mt-1">
-                        <button className="btn btn-sm btn-outline-success" onClick={async ()=>{ try { await BookingAPI.settle(b.id); this.setState({ message:'Payment settled.' }); this.loadBookings(this.username); } catch(e){ this.setState({ message:'Failed to settle payment' }); } }}>Mark as Settled</button>
+                        <button className="btn btn-sm btn-outline-success" onClick={async ()=>{
+                          try {
+                            await BookingAPI.settle(b.id);
+                            this.setState({ message:'Payment settled.' });
+                            this.loadBookings(this.username);
+                          } catch(e){
+                            const msg = e?.response?.data || e?.message || 'Failed to settle payment';
+                            this.setState({ message: msg });
+                          }
+                        }}>Mark as Settled</button>
                       </div>
                     )}
                     {/* Customer review */}
@@ -525,14 +564,16 @@ export default class Dashboard extends Component {
       {this.userType === 'renter' ? 'Listings & Bookings' : 'Bookings'}
             </button>
           </li>
-          <li className="nav-item">
-            <button 
-              className={`nav-link ${this.state.activeTab === 'analytics' ? 'active' : ''}`}
-              onClick={() => this.setActiveTab('analytics')}
-            >
-              Analytics
-            </button>
-          </li>
+          {this.userType === 'renter' && (
+            <li className="nav-item">
+              <button 
+                className={`nav-link ${this.state.activeTab === 'analytics' ? 'active' : ''}`}
+                onClick={() => this.setActiveTab('analytics')}
+              >
+                Analytics
+              </button>
+            </li>
+          )}
           <li className="nav-item">
             <button 
               className={`nav-link ${this.state.activeTab === 'settings' ? 'active' : ''}`}
@@ -547,7 +588,7 @@ export default class Dashboard extends Component {
         <div className="tab-content">
           {this.state.activeTab === 'profile' && this.renderProfile()}
           {this.state.activeTab === 'listings' && this.renderListingsAndBookings()}
-          {this.state.activeTab === 'analytics' && this.renderAnalytics()}
+          {this.userType === 'renter' && this.state.activeTab === 'analytics' && this.renderAnalytics()}
           {this.state.activeTab === 'settings' && this.renderSettings()}
         </div>
       </div>

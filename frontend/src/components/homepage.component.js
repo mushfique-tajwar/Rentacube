@@ -44,7 +44,7 @@ export default class Homepage extends Component {
   fetchListings = () => {
     this.setState({ isLoading: true });
     
-    axios.get('http://localhost:3000/listings')
+  axios.get('http://localhost:3000/listings', { params: { includeBooked: false } })
       .then(response => {
         console.log('Listings fetched successfully:', response.data);
         // Randomize the order of listings on every page visit
@@ -540,6 +540,12 @@ export default class Homepage extends Component {
                     <div className="card listing-card h-100" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${listing._id}` }>
                       {/* Image or Placeholder */}
                       <div className="position-relative" style={{ paddingTop: '100%', overflow: 'hidden' }}>
+                        {/* Status ribbon */}
+                        {listing.status && listing.status !== 'available' && (
+                          <div className={`position-absolute top-0 start-0 m-2 badge ${listing.status==='booked' ? 'bg-danger' : 'bg-secondary'}`}>
+                            {listing.status==='booked' ? 'Booked' : 'Unavailable'}
+                          </div>
+                        )}
                         {this.getImagePath(listing) ? (
                           // Render image when there's an image path in database
                           <>

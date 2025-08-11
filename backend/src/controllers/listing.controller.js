@@ -4,8 +4,12 @@ const listingService = require('../services/listing.service');
 const Listing = require('../models/Listing');
 
 exports.getAll = async (req, res) => {
-  const { category, location, owner } = req.query;
+  const { category, location, owner, includeBooked } = req.query;
   const filter = { isActive: true };
+  // Only show available listings by default (treat missing status as available for legacy docs)
+  if (!includeBooked || includeBooked === 'false') {
+    filter.$or = [{ status: 'available' }, { status: { $exists: false } }];
+  }
   if (category) filter.category = category.toLowerCase();
   if (location) filter.location = new RegExp(location, 'i');
   if (owner) filter.owner = owner;
@@ -74,6 +78,11 @@ exports.update = async (req, res) => {
     listing.name = req.body.name || listing.name;
     listing.description = req.body.description || listing.description;
     listing.category = req.body.category || listing.category;
+  // Allow owner to change visibility/availability status directly (booked is managed by booking flow)
+  if (req.body.status && ['available','unavailable'].includes(req.body.status)) {
+      listing.status = req.body.status;
+      if (req.body.status !== 'booked') { listing.bookedFrom = undefined; listing.bookedUntil = undefined; }
+    }
     if (req.file) {
       // Replace image file if provided
       if (listing.image) {
@@ -104,13 +113,13 @@ exports.byCategory = async (req, res) => {
   const category = req.params.category.toLowerCase();
   const validCategories = ['vehicles','electronics','clothing','home','property','sports','services'];
   if (!validCategories.includes(category)) return res.status(400).json('Invalid category');
-  try { const listings = await listingService.search({ category, isActive: true }); res.json(listings); }
+  try { const listings = await listingService.search({ category, isActive: true, $or: [{ status: 'available' }, { status: { $exists: false } }] }); res.json(listings); }
   catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
 exports.byLocation = async (req, res) => {
   const location = req.params.location;
-  try { const listings = await listingService.search({ location: new RegExp(location, 'i'), isActive: true }); res.json(listings); }
+  try { const listings = await listingService.search({ location: new RegExp(location, 'i'), isActive: true, $or: [{ status: 'available' }, { status: { $exists: false } }] }); res.json(listings); }
   catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
@@ -141,6 +150,10 @@ exports.adminUpdate = async (req, res) => {
     listing.name = req.body.name || listing.name;
     listing.description = req.body.description || listing.description;
     listing.category = req.body.category || listing.category;
+  if (req.body.status && ['available','unavailable'].includes(req.body.status)) {
+      listing.status = req.body.status;
+      if (req.body.status !== 'booked') { listing.bookedFrom = undefined; listing.bookedUntil = undefined; }
+    }
     listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
     await listing.save();
     res.json('Listing updated successfully!');

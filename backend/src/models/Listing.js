@@ -16,6 +16,13 @@ const listingSchema = new mongoose.Schema({
   image: { type: String, default: null },
   owner: { type: String, required: true, trim: true },
   isActive: { type: Boolean, default: true },
+  // Listing availability status controlled by owners and booking flow
+  // available: visible and can be booked
+  // booked: currently booked for a date range [bookedFrom, bookedUntil]
+  // unavailable: hidden from public searches (owner-controlled pause)
+  status: { type: String, enum: ['available', 'booked', 'unavailable'], default: 'available' },
+  bookedFrom: { type: Date },
+  bookedUntil: { type: Date },
   views: { type: Number, default: 0 },
   // Review aggregates
   avgRating: { type: Number, default: 0, min: 0, max: 5 },

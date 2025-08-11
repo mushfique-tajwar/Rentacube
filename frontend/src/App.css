@@ -1,3 +1,138 @@
+/* TimePicker compact layout */
+.time-picker .tp-grid {
+  display: inline-grid;
+  grid-auto-flow: column;
+  align-items: center;
+  gap: 8px;
+}
+.time-picker .tp-unit {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  justify-items: center;
+  align-items: center;
+}
+.time-picker .tp-value {
+  font-weight: 600;
+  font-size: 1.1rem;
+  width: 3ch;
+  text-align: center;
+}
+.time-picker .tp-sep {
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.time-picker .tp-btn {
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  line-height: 1;
+}
+
+/* Explicit dark theme group (works with custom dark classes too) */
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .form-label,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .tp-value,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .tp-sep,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .form-text {
+  color: #e9ecef;
+}
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .tp-btn.btn-outline-secondary {
+  color: #f8f9fa;
+  border-color: #6c757d;
+}
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .tp-btn.btn-outline-secondary:hover,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .tp-btn.btn-outline-secondary:focus {
+  background-color: #6c757d;
+  color: #fff;
+}
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .btn-group .btn.btn-outline-secondary {
+  color: #e9ecef;
+  border-color: #6c757d;
+}
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .btn-group .btn.btn-outline-secondary.active,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .btn-group .btn.btn-outline-secondary:active,
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .time-picker .btn-group .btn.btn-outline-secondary:focus {
+  color: #fff;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+:where([data-bs-theme='dark'], .dark, .dark-mode, body.bg-dark) .alert.alert-secondary {
+  color: #e9ecef;
+  background-color: #2b3035;
+  border-color: #3a3f44;
+}
+
+/* Removed automatic OS dark preference overrides to avoid forcing dark styles
+  when the site is in light mode. Dark mode is handled explicitly via
+  .dark-mode or [data-bs-theme='dark'] selectors below. */
+
+/* Dark mode improvements for time-picker and total cost alert (explicit theme only) */
+
+/* Also support Bootstrap 5 data-bs-theme="dark" */
+[data-bs-theme='dark'] .time-picker .form-label,
+[data-bs-theme='dark'] .time-picker .tp-value,
+[data-bs-theme='dark'] .time-picker .tp-sep,
+[data-bs-theme='dark'] .time-picker .form-text {
+  color: #e9ecef;
+}
+[data-bs-theme='dark'] .time-picker .tp-btn.btn-outline-secondary {
+  color: #f8f9fa;
+  border-color: #6c757d;
+}
+[data-bs-theme='dark'] .time-picker .tp-btn.btn-outline-secondary:hover,
+[data-bs-theme='dark'] .time-picker .tp-btn.btn-outline-secondary:focus {
+  background-color: #6c757d;
+  color: #fff;
+}
+[data-bs-theme='dark'] .time-picker .btn-group .btn.btn-outline-secondary {
+  color: #e9ecef;
+  border-color: #6c757d;
+}
+[data-bs-theme='dark'] .time-picker .btn-group .btn.btn-outline-secondary.active,
+[data-bs-theme='dark'] .time-picker .btn-group .btn.btn-outline-secondary:active,
+[data-bs-theme='dark'] .time-picker .btn-group .btn.btn-outline-secondary:focus {
+  color: #fff;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+[data-bs-theme='dark'] .alert.alert-secondary {
+  color: #e9ecef;
+  background-color: #2b3035;
+  border-color: #3a3f44;
+}
+
+/* Explicit light theme overrides */
+[data-bs-theme='light'] .time-picker .form-label,
+[data-bs-theme='light'] .time-picker .tp-value,
+[data-bs-theme='light'] .time-picker .tp-sep,
+[data-bs-theme='light'] .time-picker .form-text {
+  color: var(--bs-body-color, #212529);
+}
+[data-bs-theme='light'] .time-picker .tp-btn.btn-outline-secondary {
+  color: inherit;
+  background-color: transparent;
+  border-color: var(--bs-secondary-color, #6c757d);
+}
+[data-bs-theme='light'] .time-picker .tp-btn.btn-outline-secondary:hover,
+[data-bs-theme='light'] .time-picker .tp-btn.btn-outline-secondary:focus {
+  background-color: rgba(0,0,0,0.05);
+  color: inherit;
+}
+[data-bs-theme='light'] .time-picker .btn-group .btn.btn-outline-secondary {
+  color: inherit;
+  border-color: var(--bs-secondary-color, #6c757d);
+}
+[data-bs-theme='light'] .time-picker .btn-group .btn.btn-outline-secondary.active,
+[data-bs-theme='light'] .time-picker .btn-group .btn.btn-outline-secondary:active,
+[data-bs-theme='light'] .time-picker .btn-group .btn.btn-outline-secondary:focus {
+  color: #fff;
+  background-color: #0d6efd;
+  border-color: #0d6efd;
+}
+[data-bs-theme='light'] .alert.alert-secondary {
+  color: #212529;
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
 .App {
   text-align: center;
 }

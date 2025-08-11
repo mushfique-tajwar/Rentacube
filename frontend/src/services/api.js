@@ -4,6 +4,9 @@ const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:3000'
 });
 
+// Export base URL for constructing absolute asset URLs in components
+export const API_BASE = api.defaults.baseURL;
+
 export const UserAPI = {
   register: (data) => api.post('/users/add', data),
   login: (data) => api.post('/users/login', data),
