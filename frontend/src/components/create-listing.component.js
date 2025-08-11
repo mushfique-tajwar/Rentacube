@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import axios from 'axios';
+import { ListingController } from '../controllers/listing.controller';
 
 export default class CreateListing extends Component {
   constructor(props) {
@@ -272,11 +273,7 @@ export default class CreateListing extends Component {
       console.log(key + ':', value);
     }
 
-    axios.post('http://localhost:3000/listings/create', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    })
+    ListingController.create(formData)
       .then(res => {
         console.log('Listing created successfully:', res.data);
         
@@ -313,9 +310,9 @@ export default class CreateListing extends Component {
         window.location.replace('/');
       })
       .catch(err => {
-        console.error('Error creating listing:', err.response?.data || err.message);
+        console.error('Error creating listing:', err.message || err);
         this.setState({
-          message: `Error: ${err.response?.data || err.message}`,
+          message: `Error: ${err.message || err}`,
           isLoading: false
         });
       });

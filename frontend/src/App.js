@@ -4,7 +4,7 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import './App.css';
 import "bootstrap/dist/css/bootstrap.min.css";
 
-import Navbar from './components/navbar.component';
+import Navbar from './components/navbar.component'; // View component
 import Footer from './components/footer.component';
 import CreateUser from './components/create-user.component';
 import SignIn from './components/signin.component';
