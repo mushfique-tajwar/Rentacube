@@ -141,7 +141,9 @@ export default class Dashboard extends Component {
 
   updateBookingStatus = async (bookingId, status) => {
     try {
-      await BookingAPI.updateStatus(bookingId, status);
+  await BookingAPI.updateStatus(bookingId, status);
+  // Ensure any pay UI is closed after status changes (e.g., cancel)
+  this.setState({ showPayFor: null, payMethod: '', payRef: '' });
       this.loadBookings(this.username);
       this.setState({ message: 'Booking status updated.' });
     } catch (e) {
@@ -376,8 +378,11 @@ export default class Dashboard extends Component {
                             </div>
                           )}
                           {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
-                            <div className="mb-1">
-                              <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                            <div className="btn-group btn-group-sm mb-1">
+                              <button className="btn btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                              {b.status === 'Pending' && (
+                                <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                              )}
                             </div>
                           )}
                           {this.state.showPayFor === b.id && (
@@ -489,8 +494,11 @@ export default class Dashboard extends Component {
                               <div className="mb-1"><span className={`badge ${b.paymentStatus==='Unpaid'?'bg-secondary':b.paymentStatus==='Paid'?'bg-info':'bg-success'}`}>{b.paymentStatus}</span></div>
                             )}
                             {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
-                              <div className="mb-1">
-                                <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                              <div className="btn-group btn-group-sm mb-1">
+                                <button className="btn btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                                {b.status === 'Pending' && (
+                                  <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                                )}
                               </div>
                             )}
                             {this.state.showPayFor === b.id && (
