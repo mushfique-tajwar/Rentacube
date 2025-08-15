@@ -234,219 +234,335 @@ export default class Dashboard extends Component {
     </div>
   )
 
-  renderListingsAndBookings = () => (
-    <div className="row">
-      {this.userType === 'renter' && (
-        <div className="col-md-6">
-          <div className="card shadow">
-            <div className="card-header"><h5>My Listings</h5></div>
-            <div className="card-body">
-              {this.state.listings.length === 0 ? <p className="text-muted">No listings yet</p> : this.state.listings.map(l => (
-                <div key={l.id} className="border-bottom pb-2 mb-2">
-                  <div className="d-flex justify-content-between">
-                    <div style={{maxWidth:'70%'}}>
-                      {this.state.editListingId === l.id ? (
-                        <>
-                          <input className="form-control form-control-sm mb-1" value={this.state.editTitle||''} onChange={(e)=>this.setState({editTitle:e.target.value})} />
-                          <div className="row g-1">
-                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Hourly" value={this.state.editHourly||''} onChange={(e)=>this.setState({editHourly:e.target.value})} /></div>
-                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Daily" value={this.state.editDaily||''} onChange={(e)=>this.setState({editDaily:e.target.value})} /></div>
-                            <div className="col-4"><input className="form-control form-control-sm" placeholder="Monthly" value={this.state.editMonthly||''} onChange={(e)=>this.setState({editMonthly:e.target.value})} /></div>
-                          </div>
-                          <div className="mt-2">
-                            <label className="form-label mb-1 small">Status</label>
-                            <select className="form-select form-select-sm" value={this.state.editStatus||'available'} onChange={(e)=>this.setState({editStatus:e.target.value})}>
-                              <option value="available">Available</option>
-                              <option value="unavailable">Unavailable</option>
-                            </select>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <h6 className="mb-1" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${l.id}` }>{l.title}</h6>
-                          <div className="mb-1">
-                            {l.pricing?.hourly ? <span className="badge bg-primary me-1">${l.pricing.hourly}/hr</span> : null}
-                            {l.pricing?.daily ? <span className="badge bg-success me-1">${l.pricing.daily}/day</span> : null}
-                            {l.pricing?.monthly ? <span className="badge bg-info me-1">${l.pricing.monthly}/mo</span> : null}
-                            {!l.pricing?.hourly && !l.pricing?.daily && !l.pricing?.monthly && (
-                              <span className="text-muted">Price on request</span>
+  renderListingsAndBookings = () => {
+    const isRenter = this.userType === 'renter';
+    const customersList = (this.state.bookings || []).filter(b =>
+      isRenter ? b.renterUsername === this.username : b.customerUsername === this.username
+    );
+    const myOwnBookings = isRenter ? (this.state.bookings || []).filter(b => b.customerUsername === this.username) : [];
+
+    return (
+      <>
+        <div className="row">
+          {isRenter && (
+            <div className="col-md-6">
+              <div className="card shadow">
+                <div className="card-header"><h5>My Listings</h5></div>
+                <div className="card-body">
+                  {this.state.listings.length === 0 ? (
+                    <p className="text-muted">No listings yet</p>
+                  ) : (
+                    this.state.listings.map(l => (
+                      <div key={l.id} className="border-bottom pb-2 mb-2">
+                        <div className="d-flex justify-content-between">
+                          <div style={{maxWidth:'70%'}}>
+                            {this.state.editListingId === l.id ? (
+                              <>
+                                <input className="form-control form-control-sm mb-1" value={this.state.editTitle||''} onChange={(e)=>this.setState({editTitle:e.target.value})} />
+                                <div className="row g-1">
+                                  <div className="col-4"><input className="form-control form-control-sm" placeholder="Hourly" value={this.state.editHourly||''} onChange={(e)=>this.setState({editHourly:e.target.value})} /></div>
+                                  <div className="col-4"><input className="form-control form-control-sm" placeholder="Daily" value={this.state.editDaily||''} onChange={(e)=>this.setState({editDaily:e.target.value})} /></div>
+                                  <div className="col-4"><input className="form-control form-control-sm" placeholder="Monthly" value={this.state.editMonthly||''} onChange={(e)=>this.setState({editMonthly:e.target.value})} /></div>
+                                </div>
+                                <div className="mt-2">
+                                  <label className="form-label mb-1 small">Status</label>
+                                  <select className="form-select form-select-sm" value={this.state.editStatus||'available'} onChange={(e)=>this.setState({editStatus:e.target.value})}>
+                                    <option value="available">Available</option>
+                                    <option value="unavailable">Unavailable</option>
+                                  </select>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <h6 className="mb-1" role="button" style={{cursor:'pointer'}} onClick={() => window.location.href = `/listing/${l.id}` }>{l.title}</h6>
+                                <div className="mb-1">
+                                  {l.pricing?.hourly ? <span className="badge bg-primary me-1">${l.pricing.hourly}/hr</span> : null}
+                                  {l.pricing?.daily ? <span className="badge bg-success me-1">${l.pricing.daily}/day</span> : null}
+                                  {l.pricing?.monthly ? <span className="badge bg-info me-1">${l.pricing.monthly}/mo</span> : null}
+                                  {!l.pricing?.hourly && !l.pricing?.daily && !l.pricing?.monthly && (
+                                    <span className="text-muted">Price on request</span>
+                                  )}
+                                  <span className={`badge ms-2 ${l.availability==='available'?'bg-success':l.availability==='booked'?'bg-danger':'bg-secondary'}`}>{l.availability}</span>
+                                </div>
+                              </>
                             )}
-                            <span className={`badge ms-2 ${l.availability==='available'?'bg-success':l.availability==='booked'?'bg-danger':'bg-secondary'}`}>{l.availability}</span>
                           </div>
-                        </>
-                      )}
-                    </div>
-                    <div className="text-end">
-                      <span className={`badge ${l.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>{l.status}</span>
-                      <p className="mb-0 small text-muted">{l.views} views</p>
-                    </div>
-                  </div>
-                  <div className="d-flex gap-2 mt-1">
-                    {this.state.editListingId === l.id ? (
-                      <>
-            <button className="btn btn-success btn-sm" onClick={async ()=>{
-                          try {
-              const payload = { owner: this.username, name: this.state.editTitle };
-              if (this.state.editHourly !== '') payload.pricingHourly = this.state.editHourly;
-              if (this.state.editDaily !== '') payload.pricingDaily = this.state.editDaily;
-              if (this.state.editMonthly !== '') payload.pricingMonthly = this.state.editMonthly;
-              if (this.state.editStatus) payload.status = this.state.editStatus;
-              await ListingAPI.update(l.id, payload);
-                            this.setState({ editListingId:null, editTitle:'', editHourly:'', editDaily:'', editMonthly:'' });
-                            this.loadListings(this.username);
-                            this.setState({ message: 'Listing updated.' });
-                          } catch (e) { this.setState({ message: 'Failed to update listing' }); }
-                        }}>Save</button>
-                        <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ editListingId:null })}>Cancel</button>
-                      </>
-                    ) : (
-                      <button className="btn btn-outline-primary btn-sm" onClick={()=>this.setState({ 
-                        editListingId: l.id,
-                        editTitle: l.title,
-                        editHourly: l.pricing?.hourly ?? '',
-                        editDaily: l.pricing?.daily ?? '',
-                        editMonthly: l.pricing?.monthly ?? '',
-                        editStatus: l.availability || 'available'
-                      })}>Edit</button>
-                    )}
-                  </div>
+                          <div className="text-end">
+                            <span className={`badge ${l.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>{l.status}</span>
+                            <p className="mb-0 small text-muted">{l.views} views</p>
+                          </div>
+                        </div>
+                        <div className="d-flex gap-2 mt-1">
+                          {this.state.editListingId === l.id ? (
+                            <>
+                              <button className="btn btn-success btn-sm" onClick={async ()=>{
+                                try {
+                                  const payload = { owner: this.username, name: this.state.editTitle };
+                                  if (this.state.editHourly !== '') payload.pricingHourly = this.state.editHourly;
+                                  if (this.state.editDaily !== '') payload.pricingDaily = this.state.editDaily;
+                                  if (this.state.editMonthly !== '') payload.pricingMonthly = this.state.editMonthly;
+                                  if (this.state.editStatus) payload.status = this.state.editStatus;
+                                  await ListingAPI.update(l.id, payload);
+                                  this.setState({ editListingId:null, editTitle:'', editHourly:'', editDaily:'', editMonthly:'' });
+                                  this.loadListings(this.username);
+                                  this.setState({ message: 'Listing updated.' });
+                                } catch (e) { this.setState({ message: 'Failed to update listing' }); }
+                              }}>Save</button>
+                              <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ editListingId:null })}>Cancel</button>
+                            </>
+                          ) : (
+                            <button className="btn btn-outline-primary btn-sm" onClick={()=>this.setState({ 
+                              editListingId: l.id,
+                              editTitle: l.title,
+                              editHourly: l.pricing?.hourly ?? '',
+                              editDaily: l.pricing?.daily ?? '',
+                              editMonthly: l.pricing?.monthly ?? '',
+                              editStatus: l.availability || 'available'
+                            })}>Edit</button>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                  <button className="btn btn-primary btn-sm mt-2" onClick={()=>window.location.href='/create-listing'}>Add New Listing</button>
                 </div>
-              ))}
-              <button className="btn btn-primary btn-sm mt-2" onClick={()=>window.location.href='/create-listing'}>Add New Listing</button>
+              </div>
+            </div>
+          )}
+
+          <div className={isRenter ? 'col-md-6' : 'col-12'}>
+            <div className="card shadow">
+              <div className="card-header d-flex justify-content-between align-items-center">
+                <h5 className="mb-0">{isRenter ? 'Customers' : 'My Bookings'}</h5>
+                {isRenter && (
+                  <button className="btn btn-sm btn-outline-secondary" onClick={async ()=>{ try { await BookingAPI.autoComplete(); this.loadBookings(this.username); this.setState({ message: 'Checked and auto-completed due bookings.' }); } catch(e){} }}>Auto-complete due</button>
+                )}
+              </div>
+              <div className="card-body">
+                {this.state.message && <div className="alert alert-info py-2">{this.state.message}</div>}
+                {customersList.length === 0 ? (
+                  <p className="text-muted">{isRenter ? 'No customers yet' : 'No bookings yet'}</p>
+                ) : (
+                  customersList.map(b => (
+                    <div key={b.id} className="border-bottom pb-2 mb-2">
+                      <div className="d-flex justify-content-between">
+                        <div>
+                          <h6>{b.property}</h6>
+                          <p className="mb-1 text-muted">{b.dates}</p>
+                          <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
+                        </div>
+                        <div className="text-end" style={{minWidth:'140px'}}>
+                          <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>
+                          <p className="mb-1 small text-muted">{b.amount}</p>
+                          {b.paymentStatus && (
+                            <div className="mb-1"><span className={`badge ${b.paymentStatus==='Unpaid'?'bg-secondary':b.paymentStatus==='Paid'?'bg-info':'bg-success'}`}>{b.paymentStatus}</span></div>
+                          )}
+                          {!this.isAdmin && b.renterUsername === this.username && b.status === 'Pending' && (
+                            <div className="btn-group btn-group-sm mb-1">
+                              <button className="btn btn-outline-success" onClick={()=>this.updateBookingStatus(b.id,'Confirmed')}>Confirm</button>
+                              <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                            </div>
+                          )}
+                          {!this.isAdmin && b.renterUsername === this.username && b.status === 'Confirmed' && (
+                            <div className="btn-group btn-group-sm mb-1">
+                              <button className="btn btn-outline-primary" onClick={()=>this.updateBookingStatus(b.id,'Completed')}>Complete</button>
+                              <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
+                            </div>
+                          )}
+                          {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Unpaid' && b.status !== 'Cancelled' && (
+                            <div className="mb-1">
+                              <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'cash', payRef: '' })}>Mark Paid (renter)</button>
+                            </div>
+                          )}
+                          {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
+                            <div className="mb-1">
+                              <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                            </div>
+                          )}
+                          {this.state.showPayFor === b.id && (
+                            <div className="border rounded p-2 mt-2">
+                              <div className="mb-2">
+                                <label className="form-label mb-1">Payment Method</label>
+                                <select className="form-select form-select-sm" value={this.state.payMethod||'bkash'} onChange={e=>this.setState({payMethod:e.target.value})}>
+                                  <option value="bkash">bKash</option>
+                                  <option value="nagad">Nagad</option>
+                                  <option value="card">Card</option>
+                                  <option value="cash">Cash</option>
+                                </select>
+                              </div>
+                              <div className="mb-2">
+                                <label className="form-label mb-1">Reference / Txn ID</label>
+                                <input className="form-control form-control-sm" value={this.state.payRef||''} onChange={e=>this.setState({payRef:e.target.value})} placeholder="e.g., TX123..." />
+                              </div>
+                              <div className="d-flex gap-2">
+                                <button className="btn btn-success btn-sm" onClick={async ()=>{
+                                  if ((this.state.payMethod || 'bkash') !== 'cash' && !this.state.payRef) {
+                                    this.setState({ message: 'Please provide a payment reference/transaction ID.' });
+                                    return;
+                                  }
+                                  try {
+                                    await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef });
+                                    this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' });
+                                    this.loadBookings(this.username);
+                                  } catch(e){
+                                    const msg = e?.response?.data || e?.message || 'Failed to mark as paid';
+                                    this.setState({ message: msg });
+                                  }
+                                }}>Save</button>
+                                <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
+                              </div>
+                            </div>
+                          )}
+                          {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Paid' && (
+                            <div className="mt-1">
+                              <button className="btn btn-sm btn-outline-success" onClick={async ()=>{
+                                try {
+                                  await BookingAPI.settle(b.id);
+                                  this.setState({ message:'Payment settled.' });
+                                  this.loadBookings(this.username);
+                                } catch(e){
+                                  const msg = e?.response?.data || e?.message || 'Failed to settle payment';
+                                  this.setState({ message: msg });
+                                }
+                              }}>Mark as Settled</button>
+                            </div>
+                          )}
+                          {b.canReview && !this.state.reviewsGiven[b.id] && !this.isAdmin && (
+                            <>
+                              <button className="btn btn-sm btn-outline-primary mb-1" onClick={()=>this.submitReview(b.id, b.listingId)}>Review</button>
+                              {this.state.showReviewForm === b.id && (
+                                <div className="border rounded p-2 mt-2">
+                                  <div className="mb-2">
+                                    <label className="form-label mb-1">Rating (1-5):</label>
+                                    <input type="number" min="1" max="5" className="form-control form-control-sm" value={this.state.reviewRating || ''} onChange={e=>this.setState({reviewRating:e.target.value})} />
+                                  </div>
+                                  <div className="mb-2">
+                                    <label className="form-label mb-1">Comment:</label>
+                                    <textarea className="form-control form-control-sm" rows="2" value={this.state.reviewComment || ''} onChange={e=>this.setState({reviewComment:e.target.value})} />
+                                  </div>
+                                  <div className="d-flex gap-2">
+                                    <button className="btn btn-success btn-sm" onClick={()=>this.handleReviewSubmit(b.id, b.listingId)}>Submit</button>
+                                    <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({showReviewForm:null, reviewRating:'', reviewComment:''})}>Cancel</button>
+                                  </div>
+                                </div>
+                              )}
+                            </>
+                          )}
+                          {b.canReview && this.state.reviewsGiven[b.id] && (
+                            <span className="badge bg-info">Reviewed</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           </div>
         </div>
-      )}
-      <div className={this.userType === 'renter' ? 'col-md-6' : 'col-12'}>
-        <div className="card shadow">
-          <div className="card-header d-flex justify-content-between align-items-center"><h5 className="mb-0">My Bookings</h5>{this.userType==='renter' && (<button className="btn btn-sm btn-outline-secondary" onClick={async ()=>{ try { await BookingAPI.autoComplete(); this.loadBookings(this.username); this.setState({ message: 'Checked and auto-completed due bookings.' }); } catch(e){} }}>Auto-complete due</button>)}
-          </div>
-          <div className="card-body">
-            {this.state.message && <div className="alert alert-info py-2">{this.state.message}</div>}
-            {this.state.bookings.length === 0 ? <p className="text-muted">No bookings yet</p> : this.state.bookings.map(b => (
-              <div key={b.id} className="border-bottom pb-2 mb-2">
-                <div className="d-flex justify-content-between">
-                  <div>
-                    <h6>{b.property}</h6>
-                    <p className="mb-1 text-muted">{b.dates}</p>
-                    <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
-                  </div>
-                  <div className="text-end" style={{minWidth:'140px'}}>
-                    <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>
-                    <p className="mb-1 small text-muted">{b.amount}</p>
-                    {/* Payment status row */}
-                    {b.paymentStatus && (
-                      <div className="mb-1"><span className={`badge ${b.paymentStatus==='Unpaid'?'bg-secondary':b.paymentStatus==='Paid'?'bg-info':'bg-success'}`}>{b.paymentStatus}</span></div>
-                    )}
-                    {/* Renter controls */}
-                    {!this.isAdmin && b.renterUsername === this.username && b.status === 'Pending' && (
-                      <div className="btn-group btn-group-sm mb-1">
-                        <button className="btn btn-outline-success" onClick={()=>this.updateBookingStatus(b.id,'Confirmed')}>Confirm</button>
-                        <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
-                      </div>
-                    )}
-                    {!this.isAdmin && b.renterUsername === this.username && b.status === 'Confirmed' && (
-                      <div className="btn-group btn-group-sm mb-1">
-                        <button className="btn btn-outline-primary" onClick={()=>this.updateBookingStatus(b.id,'Completed')}>Complete</button>
-                        <button className="btn btn-outline-danger" onClick={()=>this.updateBookingStatus(b.id,'Cancelled')}>Cancel</button>
-                      </div>
-                    )}
-                    {/* Renter can mark as Paid if collected cash or verify payment */}
-                    {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Unpaid' && b.status !== 'Cancelled' && (
-                      <div className="mb-1">
-                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'cash', payRef: '' })}>Mark Paid (renter)</button>
-                      </div>
-                    )}
-                    {/* Customer payment actions */}
-                    {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
-                      <div className="mb-1">
-                        <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
-                      </div>
-                    )}
-        {this.state.showPayFor === b.id && (
-                      <div className="border rounded p-2 mt-2">
-                        <div className="mb-2">
-                          <label className="form-label mb-1">Payment Method</label>
-                          <select className="form-select form-select-sm" value={this.state.payMethod||'bkash'} onChange={e=>this.setState({payMethod:e.target.value})}>
-                            <option value="bkash">bKash</option>
-                            <option value="nagad">Nagad</option>
-                            <option value="card">Card</option>
-                            <option value="cash">Cash</option>
-                          </select>
-                        </div>
-                        <div className="mb-2">
-                          <label className="form-label mb-1">Reference / Txn ID</label>
-                          <input className="form-control form-control-sm" value={this.state.payRef||''} onChange={e=>this.setState({payRef:e.target.value})} placeholder="e.g., TX123..." />
-                        </div>
-                        <div className="d-flex gap-2">
-                          <button className="btn btn-success btn-sm" onClick={async ()=>{
-                            // Basic client-side validation: require a reference for non-cash methods
-                            if ((this.state.payMethod || 'bkash') !== 'cash' && !this.state.payRef) {
-                              this.setState({ message: 'Please provide a payment reference/transaction ID.' });
-                              return;
-                            }
-                            try {
-                              await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef });
-                              this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' });
-                              this.loadBookings(this.username);
-                            } catch(e){
-                              const msg = e?.response?.data || e?.message || 'Failed to mark as paid';
-                              this.setState({ message: msg });
-                            }
-                          }}>Save</button>
-                          <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
-                        </div>
-                      </div>
-                    )}
-                    {/* Renter settlement action */}
-                    {!this.isAdmin && b.renterUsername === this.username && b.paymentStatus === 'Paid' && (
-                      <div className="mt-1">
-                        <button className="btn btn-sm btn-outline-success" onClick={async ()=>{
-                          try {
-                            await BookingAPI.settle(b.id);
-                            this.setState({ message:'Payment settled.' });
-                            this.loadBookings(this.username);
-                          } catch(e){
-                            const msg = e?.response?.data || e?.message || 'Failed to settle payment';
-                            this.setState({ message: msg });
-                          }
-                        }}>Mark as Settled</button>
-                      </div>
-                    )}
-                    {/* Customer review */}
-                    {b.canReview && !this.state.reviewsGiven[b.id] && !this.isAdmin && (
-                      <>
-                        <button className="btn btn-sm btn-outline-primary mb-1" onClick={()=>this.submitReview(b.id, b.listingId)}>Review</button>
-                        {this.state.showReviewForm === b.id && (
-                          <div className="border rounded p-2 mt-2">
-                            <div className="mb-2">
-                              <label className="form-label mb-1">Rating (1-5):</label>
-                              <input type="number" min="1" max="5" className="form-control form-control-sm" value={this.state.reviewRating || ''} onChange={e=>this.setState({reviewRating:e.target.value})} />
-                            </div>
-                            <div className="mb-2">
-                              <label className="form-label mb-1">Comment:</label>
-                              <textarea className="form-control form-control-sm" rows="2" value={this.state.reviewComment || ''} onChange={e=>this.setState({reviewComment:e.target.value})} />
-                            </div>
-                            <div className="d-flex gap-2">
-                              <button className="btn btn-success btn-sm" onClick={()=>this.handleReviewSubmit(b.id, b.listingId)}>Submit</button>
-                              <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({showReviewForm:null, reviewRating:'', reviewComment:''})}>Cancel</button>
-                            </div>
+
+        {isRenter && (
+          <div className="row mt-3">
+            <div className="col-12">
+              <div className="card shadow">
+                <div className="card-header d-flex justify-content-between align-items-center">
+                  <h5 className="mb-0">My Bookings</h5>
+                </div>
+                <div className="card-body">
+                  {this.state.message && <div className="alert alert-info py-2">{this.state.message}</div>}
+                  {myOwnBookings.length === 0 ? (
+                    <p className="text-muted">No bookings made yet</p>
+                  ) : (
+                    myOwnBookings.map(b => (
+                      <div key={b.id} className="border-bottom pb-2 mb-2">
+                        <div className="d-flex justify-content-between">
+                          <div>
+                            <h6>{b.property}</h6>
+                            <p className="mb-1 text-muted">{b.dates}</p>
+                            <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
                           </div>
-                        )}
-                      </>
-                    )}
-                    {b.canReview && this.state.reviewsGiven[b.id] && (
-                      <span className="badge bg-info">Reviewed</span>
-                    )}
-                  </div>
+                          <div className="text-end" style={{minWidth:'140px'}}>
+                            <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>
+                            <p className="mb-1 small text-muted">{b.amount}</p>
+                            {b.paymentStatus && (
+                              <div className="mb-1"><span className={`badge ${b.paymentStatus==='Unpaid'?'bg-secondary':b.paymentStatus==='Paid'?'bg-info':'bg-success'}`}>{b.paymentStatus}</span></div>
+                            )}
+                            {!this.isAdmin && b.customerUsername === this.username && b.status !== 'Cancelled' && b.paymentStatus === 'Unpaid' && (
+                              <div className="mb-1">
+                                <button className="btn btn-sm btn-outline-success" onClick={()=>this.setState({ showPayFor: b.id, payMethod: 'bkash', payRef: '' })}>Pay</button>
+                              </div>
+                            )}
+                            {this.state.showPayFor === b.id && (
+                              <div className="border rounded p-2 mt-2">
+                                <div className="mb-2">
+                                  <label className="form-label mb-1">Payment Method</label>
+                                  <select className="form-select form-select-sm" value={this.state.payMethod||'bkash'} onChange={e=>this.setState({payMethod:e.target.value})}>
+                                    <option value="bkash">bKash</option>
+                                    <option value="nagad">Nagad</option>
+                                    <option value="card">Card</option>
+                                    <option value="cash">Cash</option>
+                                  </select>
+                                </div>
+                                <div className="mb-2">
+                                  <label className="form-label mb-1">Reference / Txn ID</label>
+                                  <input className="form-control form-control-sm" value={this.state.payRef||''} onChange={e=>this.setState({payRef:e.target.value})} placeholder="e.g., TX123..." />
+                                </div>
+                                <div className="d-flex gap-2">
+                                  <button className="btn btn-success btn-sm" onClick={async ()=>{
+                                    if ((this.state.payMethod || 'bkash') !== 'cash' && !this.state.payRef) {
+                                      this.setState({ message: 'Please provide a payment reference/transaction ID.' });
+                                      return;
+                                    }
+                                    try {
+                                      await BookingAPI.pay(b.id, { method: this.state.payMethod, ref: this.state.payRef });
+                                      this.setState({ showPayFor:null, payMethod:'', payRef:'', message:'Payment marked as paid.' });
+                                      this.loadBookings(this.username);
+                                    } catch(e){
+                                      const msg = e?.response?.data || e?.message || 'Failed to mark as paid';
+                                      this.setState({ message: msg });
+                                    }
+                                  }}>Save</button>
+                                  <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ showPayFor:null, payMethod:'', payRef:'' })}>Cancel</button>
+                                </div>
+                              </div>
+                            )}
+                            {b.canReview && !this.state.reviewsGiven[b.id] && !this.isAdmin && (
+                              <>
+                                <button className="btn btn-sm btn-outline-primary mb-1" onClick={()=>this.submitReview(b.id, b.listingId)}>Review</button>
+                                {this.state.showReviewForm === b.id && (
+                                  <div className="border rounded p-2 mt-2">
+                                    <div className="mb-2">
+                                      <label className="form-label mb-1">Rating (1-5):</label>
+                                      <input type="number" min="1" max="5" className="form-control form-control-sm" value={this.state.reviewRating || ''} onChange={e=>this.setState({reviewRating:e.target.value})} />
+                                    </div>
+                                    <div className="mb-2">
+                                      <label className="form-label mb-1">Comment:</label>
+                                      <textarea className="form-control form-control-sm" rows="2" value={this.state.reviewComment || ''} onChange={e=>this.setState({reviewComment:e.target.value})} />
+                                    </div>
+                                    <div className="d-flex gap-2">
+                                      <button className="btn btn-success btn-sm" onClick={()=>this.handleReviewSubmit(b.id, b.listingId)}>Submit</button>
+                                      <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({showReviewForm:null, reviewRating:'', reviewComment:''})}>Cancel</button>
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            {b.canReview && this.state.reviewsGiven[b.id] && (
+                              <span className="badge bg-info">Reviewed</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </div>
-            ))}
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
-  )
+        )}
+      </>
+    );
+  }
 
   renderAnalytics = () => (
     <div className="row">
