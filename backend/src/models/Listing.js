@@ -24,6 +24,8 @@ const listingSchema = new mongoose.Schema({
   bookedFrom: { type: Date },
   bookedUntil: { type: Date },
   views: { type: Number, default: 0 },
+  // Number of times this listing has been booked (incremented on booking confirmation)
+  bookingsCount: { type: Number, default: 0, min: 0 },
   // Review aggregates
   avgRating: { type: Number, default: 0, min: 0, max: 5 },
   reviewCount: { type: Number, default: 0, min: 0 },

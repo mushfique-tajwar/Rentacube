@@ -67,6 +67,8 @@ exports.updateStatus = async (req, res) => {
   try {
     const { status } = req.body;
     if (!['Pending','Confirmed','Cancelled','Completed'].includes(status)) return res.status(400).json('Invalid status');
+    // Fetch current booking to detect transitions
+    const existing = await bookingService.findById(req.params.id);
     const updated = await bookingService.updateStatus(req.params.id, status);
     if (!updated) return res.status(404).json('Booking not found');
     // Reflect booking status to listing availability
@@ -80,6 +82,10 @@ exports.updateStatus = async (req, res) => {
           listing.status = 'booked';
           listing.bookedFrom = uStart;
           listing.bookedUntil = uEnd;
+          // Increment total bookings counter when transitioning to Confirmed
+          if (existing && existing.status !== 'Confirmed') {
+            listing.bookingsCount = (listing.bookingsCount || 0) + 1;
+          }
         } else if (status === 'Cancelled') {
           // If the current booked window matches this booking, free it
           if (listing.bookedFrom && listing.bookedUntil &&

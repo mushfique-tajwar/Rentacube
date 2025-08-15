@@ -84,7 +84,8 @@ export default class Dashboard extends Component {
         pricing: l.pricing || {},
   status: l.isActive ? 'Active' : 'Inactive',
   availability: l.status || 'available',
-        views: l.views || 0
+        views: l.views || 0,
+        bookingsCount: l.bookingsCount || 0
       }));
       this.setState({ listings }, this.updateAnalyticsFromState);
     } catch (e) {
@@ -289,7 +290,7 @@ export default class Dashboard extends Component {
                           </div>
                           <div className="text-end">
                             <span className={`badge ${l.status === 'Active' ? 'bg-success' : 'bg-secondary'}`}>{l.status}</span>
-                            <p className="mb-0 small text-muted">{l.views} views</p>
+                            <p className="mb-0 small text-muted">{l.views} views • {l.bookingsCount || 0} bookings</p>
                           </div>
                         </div>
                         <div className="d-flex gap-2 mt-1">

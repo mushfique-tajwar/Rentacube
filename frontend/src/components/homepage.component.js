@@ -625,9 +625,12 @@ export default class Homepage extends Component {
                         {/* Description */}
                         <p className="card-text flex-grow-1">{listing.description}</p>
                         
-                        {/* View count */}
+                        {/* View and booking counts */}
                         <div className="mb-2 text-muted small d-flex justify-content-between">
-                          <span><i className="fas fa-eye me-1"></i>{listing.views} views</span>
+                          <span>
+                            <i className="fas fa-eye me-1"></i>{listing.views} views
+                            <span className="ms-3"><i className="fas fa-book me-1"></i>{listing.bookingsCount || 0} bookings</span>
+                          </span>
                           {typeof listing.avgRating === 'number' && listing.reviewCount > 0 && (
                             <span title={`${listing.reviewCount} review(s)`}>
                               <i className="fas fa-star text-warning me-1"></i>{listing.avgRating.toFixed(1)} ({listing.reviewCount})

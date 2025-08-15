@@ -21,6 +21,8 @@ export default class ListingDetail extends Component {
   // Monthly (YYYY-MM)
   monthlyStart: '',
   monthlyEnd: '',
+  // Feature detection
+  supportsMonthInput: true,
   // Estimate
   totalEstimate: 0,
       bookingMessage: '',
@@ -45,7 +47,39 @@ export default class ListingDetail extends Component {
         else if (data.pricing.hourly) defaultType = 'hourly';
         else if (data.pricing.monthly) defaultType = 'monthly';
       }
-      this.setState({ listing: data, loading: false, bookingType: defaultType }, async () => {
+      // Detect month input support
+      let supportsMonthInput = true;
+      try {
+        const test = document.createElement('input');
+        test.setAttribute('type', 'month');
+        supportsMonthInput = (test.type === 'month');
+      } catch { supportsMonthInput = false; }
+      // Initialize sensible defaults for the selected mode
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+      const dd = today.getDate().toString().padStart(2, '0');
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+      const tomorrow = new Date(today.getTime() + 24*60*60*1000);
+      const tyyyy = tomorrow.getFullYear();
+      const tmm = (tomorrow.getMonth() + 1).toString().padStart(2, '0');
+      const tdd = tomorrow.getDate().toString().padStart(2, '0');
+      const tomorrowStr = `${tyyyy}-${tmm}-${tdd}`;
+      const monthStr = `${yyyy}-${mm}`;
+      this.setState({
+        listing: data,
+        loading: false,
+        bookingType: defaultType,
+        supportsMonthInput,
+        // Prefill defaults depending on type
+        startDate: defaultType==='daily' ? todayStr : this.state.startDate,
+        endDate: defaultType==='daily' ? tomorrowStr : this.state.endDate,
+        hourlyDate: defaultType==='hourly' ? todayStr : this.state.hourlyDate,
+        hourlyStartTime: defaultType==='hourly' ? (this.state.hourlyStartTime || '09:00') : this.state.hourlyStartTime,
+        hourlyEndTime: defaultType==='hourly' ? (this.state.hourlyEndTime || '17:00') : this.state.hourlyEndTime,
+        monthlyStart: defaultType==='monthly' ? (this.state.monthlyStart || monthStr) : this.state.monthlyStart,
+        monthlyEnd: defaultType==='monthly' ? (this.state.monthlyEnd || monthStr) : this.state.monthlyEnd,
+      }, async () => {
         this.recomputeEstimate();
         try {
           if (data?.owner) {
@@ -55,6 +89,29 @@ export default class ListingDetail extends Component {
         } catch {}
       });
     } catch (e) { this.setState({ error: 'Failed to load listing', loading: false }); }
+  }
+
+  setBookingType = (type) => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = (today.getMonth() + 1).toString().padStart(2, '0');
+    const dd = today.getDate().toString().padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    const tomorrow = new Date(today.getTime() + 24*60*60*1000);
+    const tyyyy = tomorrow.getFullYear();
+    const tmm = (tomorrow.getMonth() + 1).toString().padStart(2, '0');
+    const tdd = tomorrow.getDate().toString().padStart(2, '0');
+    const tomorrowStr = `${tyyyy}-${tmm}-${tdd}`;
+    const monthStr = `${yyyy}-${mm}`;
+    if (type === 'hourly') {
+      this.setState({ bookingType: 'hourly', hourlyDate: todayStr, hourlyStartTime: this.state.hourlyStartTime || '09:00', hourlyEndTime: this.state.hourlyEndTime || '17:00' }, this.recomputeEstimate);
+    } else if (type === 'daily') {
+      this.setState({ bookingType: 'daily', startDate: this.state.startDate || todayStr, endDate: this.state.endDate || tomorrowStr }, this.recomputeEstimate);
+    } else if (type === 'monthly') {
+      this.setState({ bookingType: 'monthly', monthlyStart: this.state.monthlyStart || monthStr, monthlyEnd: this.state.monthlyEnd || monthStr }, this.recomputeEstimate);
+    } else {
+      this.setState({ bookingType: type }, this.recomputeEstimate);
+    }
   }
 
   async loadReviews(id) {
@@ -197,7 +254,10 @@ export default class ListingDetail extends Component {
                 {typeof listing.avgRating === 'number' && listing.reviewCount > 0 && (
                   <div className="mb-2"><i className="fas fa-star text-warning me-1"></i>{listing.avgRating.toFixed(1)} ({listing.reviewCount} reviews)</div>
                 )}
-                <div className="text-muted small"><i className="fas fa-eye me-1"></i>{listing.views} views</div>
+                <div className="text-muted small d-flex gap-3 align-items-center">
+                  <span><i className="fas fa-eye me-1"></i>{listing.views} views</span>
+                  <span><i className="fas fa-book me-1"></i>{listing.bookingsCount || 0} bookings</span>
+                </div>
               </div>
             </div>
 
@@ -242,9 +302,9 @@ export default class ListingDetail extends Component {
                     <div className="mb-3">
                       <label className="form-label">Booking Type</label>
                       <div className="btn-group w-100" role="group">
-                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='hourly'?'active':''}`} disabled={!listing.pricing?.hourly} onClick={()=>this.setState({bookingType:'hourly'}, this.recomputeEstimate)}>Hourly</button>
-                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='daily'?'active':''}`} disabled={!listing.pricing?.daily && !listing.pricePerDay} onClick={()=>this.setState({bookingType:'daily'}, this.recomputeEstimate)}>Daily</button>
-                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='monthly'?'active':''}`} disabled={!listing.pricing?.monthly} onClick={()=>this.setState({bookingType:'monthly'}, this.recomputeEstimate)}>Monthly</button>
+                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='hourly'?'active':''}`} disabled={!listing.pricing?.hourly} onClick={()=>this.setBookingType('hourly')}>Hourly</button>
+                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='daily'?'active':''}`} disabled={!listing.pricing?.daily && !listing.pricePerDay} onClick={()=>this.setBookingType('daily')}>Daily</button>
+                        <button type="button" className={`btn btn-outline-secondary ${this.state.bookingType==='monthly'?'active':''}`} disabled={!listing.pricing?.monthly} onClick={()=>this.setBookingType('monthly')}>Monthly</button>
                       </div>
                     </div>
 
@@ -285,11 +345,47 @@ export default class ListingDetail extends Component {
                       <div className="row g-2">
                         <div className="col-6">
                           <label className="form-label">Start month</label>
-                          <input type="month" className="form-control" value={this.state.monthlyStart} onChange={e=>this.setState({monthlyStart:e.target.value}, this.recomputeEstimate)} />
+                          {this.state.supportsMonthInput ? (
+                            <input ref={el=>this.mStart=el} type="month" className="form-control" value={this.state.monthlyStart} onClick={()=>this.mStart && this.mStart.showPicker && this.mStart.showPicker()} onChange={e=>this.setState({monthlyStart:e.target.value}, this.recomputeEstimate)} />
+                          ) : (
+                            <div className="d-flex gap-1">
+                              <select className="form-select" value={(this.state.monthlyStart||'').split('-')[1]||''} onChange={(e)=>{
+                                const parts = (this.state.monthlyStart || `${new Date().getFullYear()}-01`).split('-');
+                                const val = `${parts[0]}-${e.target.value.padStart(2,'0')}`;
+                                this.setState({ monthlyStart: val }, this.recomputeEstimate);
+                              }}>
+                                {Array.from({length:12}, (_,i)=> (i+1).toString().padStart(2,'0')).map(m => <option key={m} value={m}>{m}</option>)}
+                              </select>
+                              <input className="form-control" type="number" min="1970" max="2100" value={(this.state.monthlyStart||'').split('-')[0]||''} onChange={(e)=>{
+                                const y = e.target.value || `${new Date().getFullYear()}`;
+                                const parts = (this.state.monthlyStart || `${new Date().getFullYear()}-01`).split('-');
+                                const val = `${y}-${(parts[1]||'01').padStart(2,'0')}`;
+                                this.setState({ monthlyStart: val }, this.recomputeEstimate);
+                              }} />
+                            </div>
+                          )}
                         </div>
                         <div className="col-6">
                           <label className="form-label">End month</label>
-                          <input type="month" className="form-control" value={this.state.monthlyEnd} onChange={e=>this.setState({monthlyEnd:e.target.value}, this.recomputeEstimate)} />
+                          {this.state.supportsMonthInput ? (
+                            <input ref={el=>this.mEnd=el} type="month" className="form-control" value={this.state.monthlyEnd} onClick={()=>this.mEnd && this.mEnd.showPicker && this.mEnd.showPicker()} onChange={e=>this.setState({monthlyEnd:e.target.value}, this.recomputeEstimate)} />
+                          ) : (
+                            <div className="d-flex gap-1">
+                              <select className="form-select" value={(this.state.monthlyEnd||'').split('-')[1]||''} onChange={(e)=>{
+                                const parts = (this.state.monthlyEnd || `${new Date().getFullYear()}-01`).split('-');
+                                const val = `${parts[0]}-${e.target.value.padStart(2,'0')}`;
+                                this.setState({ monthlyEnd: val }, this.recomputeEstimate);
+                              }}>
+                                {Array.from({length:12}, (_,i)=> (i+1).toString().padStart(2,'0')).map(m => <option key={m} value={m}>{m}</option>)}
+                              </select>
+                              <input className="form-control" type="number" min="1970" max="2100" value={(this.state.monthlyEnd||'').split('-')[0]||''} onChange={(e)=>{
+                                const y = e.target.value || `${new Date().getFullYear()}`;
+                                const parts = (this.state.monthlyEnd || `${new Date().getFullYear()}-01`).split('-');
+                                const val = `${y}-${(parts[1]||'01').padStart(2,'0')}`;
+                                this.setState({ monthlyEnd: val }, this.recomputeEstimate);
+                              }} />
+                            </div>
+                          )}
                         </div>
                       </div>
                     )}

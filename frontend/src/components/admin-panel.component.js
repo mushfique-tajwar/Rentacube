@@ -490,6 +490,7 @@ export default class AdminPanel extends Component {
                         <th>Location</th>
                         <th>Status</th>
                         <th>Views</th>
+                        <th>Bookings</th>
                         <th>Actions</th>
                       </tr>
                     </thead>
@@ -609,6 +610,7 @@ export default class AdminPanel extends Component {
                             )}
                           </td>
                           <td>{listing.views}</td>
+                          <td>{listing.bookingsCount || 0}</td>
                           <td>
                             {editingListing === listing._id ? (
                               <>
