@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import axios from 'axios';
+import Chatbot from './chatbot.component';
 
 export default class Homepage extends Component {
   constructor(props) {
@@ -752,6 +753,9 @@ export default class Homepage extends Component {
             </div>
           </div>
         </div>
+        
+        {/* Chatbot Component */}
+        <Chatbot />
       </div>
     );
   }
