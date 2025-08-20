@@ -1,5 +1,4 @@
 import React, { Component } from 'react';
-import axios from 'axios';
 import { ListingController } from '../controllers/listing.controller';
 
 export default class CreateListing extends Component {
@@ -15,7 +14,8 @@ export default class CreateListing extends Component {
     this.onChangeDistrict = this.onChangeDistrict.bind(this);
     this.onChangeCity = this.onChangeCity.bind(this);
     this.onChangeCategory = this.onChangeCategory.bind(this);
-    this.onChangeImage = this.onChangeImage.bind(this);
+    this.onChangeImages = this.onChangeImages.bind(this);
+    this.removeImage = this.removeImage.bind(this);
     this.onSubmit = this.onSubmit.bind(this);
 
     this.state = {
@@ -34,11 +34,12 @@ export default class CreateListing extends Component {
       district: '',
       city: '',
       category: '',
-      image: null,
+      images: [], // Changed from single image to array
+      imagePreviews: [], // Array of preview URLs
       message: '',
       isLoading: false,
-      imagePreview: null,
-      imageSizeError: false
+      imageSizeErrors: [], // Array to track size errors for each image
+      showSuccessModal: false // State for success popup modal
     };
 
     // Bangladesh districts and their cities
@@ -143,25 +144,69 @@ export default class CreateListing extends Component {
     this.setState({ category: e.target.value });
   }
 
-  onChangeImage(e) {
-    const file = e.target.files[0];
-    if (file) {
-      // Check file size (150KB = 150 * 1024 bytes)
-      if (file.size > 150 * 1024) {
-        this.setState({
-          imageSizeError: true,
-          image: null,
-          imagePreview: null
-        });
-        return;
+  onChangeImages(e) {
+    const files = Array.from(e.target.files);
+    
+    if (files.length === 0) return;
+    
+    if (files.length > 3) {
+      alert('Maximum 3 images allowed per listing');
+      e.target.value = '';
+      return;
+    }
+    
+    // Check if adding these files would exceed the limit
+    if (this.state.images.length + files.length > 3) {
+      alert(`You can only add ${3 - this.state.images.length} more image(s)`);
+      e.target.value = '';
+      return;
+    }
+    
+    const validFiles = [];
+    const validPreviews = [];
+    const sizeErrors = [];
+    
+    files.forEach((file, index) => {
+      // Check file size (200KB = 200 * 1024 bytes)
+      if (file.size > 200 * 1024) {
+        sizeErrors.push(index);
+        alert(`Image "${file.name}" exceeds 200KB limit. Please choose a smaller image.`);
+      } else {
+        validFiles.push(file);
+        validPreviews.push(URL.createObjectURL(file));
+        sizeErrors.push(false);
       }
-
+    });
+    
+    if (validFiles.length > 0) {
       this.setState({
-        image: file,
-        imageSizeError: false,
-        imagePreview: URL.createObjectURL(file)
+        images: [...this.state.images, ...validFiles],
+        imagePreviews: [...this.state.imagePreviews, ...validPreviews],
+        imageSizeErrors: [...this.state.imageSizeErrors, ...sizeErrors]
       });
     }
+    
+    // Clear input to allow selecting same files again
+    e.target.value = '';
+  }
+
+  removeImage(index) {
+    const newImages = [...this.state.images];
+    const newPreviews = [...this.state.imagePreviews];
+    const newErrors = [...this.state.imageSizeErrors];
+    
+    // Revoke the object URL to prevent memory leaks
+    URL.revokeObjectURL(newPreviews[index]);
+    
+    newImages.splice(index, 1);
+    newPreviews.splice(index, 1);
+    newErrors.splice(index, 1);
+    
+    this.setState({
+      images: newImages,
+      imagePreviews: newPreviews,
+      imageSizeErrors: newErrors
+    });
   }
 
   onSubmit(e) {
@@ -230,9 +275,9 @@ export default class CreateListing extends Component {
       return;
     }
 
-    // Check if image is provided (now mandatory)
-    if (!this.state.image) {
-      this.setState({ message: 'Image is required for all listings. Please select an image.' });
+    // Check if at least one image is provided
+    if (this.state.images.length === 0) {
+      this.setState({ message: 'At least one image is required for all listings. Please select images.' });
       return;
     }
 
@@ -252,7 +297,11 @@ export default class CreateListing extends Component {
     formData.append('city', this.state.city);
     formData.append('category', this.state.category);
     formData.append('owner', username);
-    formData.append('image', this.state.image); // Image is now mandatory
+    
+    // Append all images
+    this.state.images.forEach((image, index) => {
+      formData.append('images', image);
+    });
 
     console.log('Creating listing...');
     console.log('Form data being sent:');
@@ -265,7 +314,7 @@ export default class CreateListing extends Component {
     console.log('showHourly:', showHourly, 'hourly value:', hourly);
     console.log('showDaily:', showDaily, 'daily value:', daily);
     console.log('showMonthly:', showMonthly, 'monthly value:', monthly);
-    console.log('image:', this.state.image?.name);
+    console.log('images:', this.state.images.map(img => img.name));
     
     // Debug: Log all FormData entries
     console.log('FormData entries:');
@@ -277,9 +326,9 @@ export default class CreateListing extends Component {
       .then(res => {
         console.log('Listing created successfully:', res.data);
         
-        // Show success message
+        // Show success popup modal
         this.setState({
-          message: '🎉 Listing created successfully! Redirecting to homepage...',
+          showSuccessModal: true,
           isLoading: false,
           name: '',
           description: '',
@@ -296,15 +345,21 @@ export default class CreateListing extends Component {
           district: '',
           city: '',
           category: '',
-          image: null,
-          imagePreview: null
+          images: [],
+          imagePreviews: [],
+          imageSizeErrors: []
         });
         
-        // Reset the file input
-        document.getElementById('imageInput').value = '';
+        // Reset the file input only if it exists
+        const imageInput = document.getElementById('imageInput');
+        if (imageInput) {
+          imageInput.value = '';
+        }
         
-  // Redirect to homepage after a short delay so the success UI is visible
-  setTimeout(()=>window.location.replace('/'), 800);
+        // Redirect to homepage after showing popup
+        setTimeout(() => {
+          window.location.replace('/');
+        }, 2500);
       })
       .catch(err => {
         console.error('Error creating listing:', err.message || err);
@@ -561,49 +616,76 @@ export default class CreateListing extends Component {
                     </div>
                   )}
 
-                  {/* Image Upload */}
+                  {/* Multiple Image Upload */}
                   <div className="form-group mb-3">
                     <label className="form-label fw-bold">
-                      <i className="fas fa-image me-2"></i>Image *
+                      <i className="fas fa-images me-2"></i>Images * (1-3 images)
                     </label>
-                    <input 
-                      type="file" 
-                      id="imageInput"
-                      className={`form-control ${this.state.imageSizeError || !this.state.image ? 'is-invalid' : ''}`}
-                      accept="image/*"
-                      onChange={this.onChangeImage}
-                      required
-                    />
-                    <div className="form-text">
-                      <strong>Required:</strong> Maximum file size: 150KB. Supported formats: JPG, PNG, GIF
-                    </div>
-                    {this.state.imageSizeError && (
-                      <div className="invalid-feedback">
-                        File size must be less than 150KB. Please choose a smaller image or compress it. Square images work best.
+                    
+                    {/* Current Images Display */}
+                    {this.state.images.length > 0 && (
+                      <div className="mb-3">
+                        <div className="row">
+                          {this.state.imagePreviews.map((preview, index) => (
+                            <div key={index} className="col-4 mb-2">
+                              <div className="position-relative">
+                                <img 
+                                  src={preview} 
+                                  alt={`Preview ${index + 1}`} 
+                                  className="img-thumbnail w-100"
+                                  style={{ height: '120px', objectFit: 'cover' }}
+                                />
+                                <button
+                                  type="button"
+                                  className="btn btn-danger btn-sm position-absolute top-0 end-0 m-1"
+                                  onClick={() => this.removeImage(index)}
+                                  style={{ fontSize: '12px', padding: '2px 6px' }}
+                                >
+                                  ×
+                                </button>
+                                <div className="text-center mt-1 small">
+                                  Image {index + 1}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     )}
-                    {!this.state.image && !this.state.imageSizeError && (
-                      <div className="invalid-feedback">
-                        Please select an image for your listing.
-                      </div>
-                    )}
-                    {this.state.imagePreview && (
-                      <div className="mt-2">
-                        <img 
-                          src={this.state.imagePreview} 
-                          alt="Preview" 
-                          className="img-thumbnail"
-                          style={{ maxWidth: '200px', maxHeight: '200px' }}
+                    
+                    {/* Add More Images Button */}
+                    {this.state.images.length < 3 && (
+                      <div>
+                        <input 
+                          type="file" 
+                          id="imageInput"
+                          className="form-control"
+                          accept="image/*"
+                          multiple
+                          onChange={this.onChangeImages}
                         />
+                        <div className="form-text">
+                          <strong>Required:</strong> Select 1-3 images. Maximum file size per image: 200KB. Supported formats: JPG, PNG, WebP
+                        </div>
                       </div>
                     )}
+                    
+                    {this.state.images.length === 0 && (
+                      <div className="text-danger small mt-1">
+                        Please select at least one image for your listing.
+                      </div>
+                    )}
+                    
+                    <div className="mt-2 small text-muted">
+                      Current images: {this.state.images.length}/3
+                    </div>
                   </div>
 
                   {/* Submit Button */}
                   <button 
                     type="submit" 
                     className="btn btn-primary btn-lg w-100"
-                    disabled={this.state.isLoading || this.state.imageSizeError || !this.state.image}
+                    disabled={this.state.isLoading || this.state.images.length === 0}
                   >
                     {this.state.isLoading ? (
                       <>
@@ -621,6 +703,28 @@ export default class CreateListing extends Component {
             </div>
           </div>
         </div>
+
+        {/* Success Modal */}
+        {this.state.showSuccessModal && (
+          <>
+            <div className="modal-backdrop fade show"></div>
+            <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1">
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content">
+                  <div className="modal-body text-center p-4">
+                    <div className="mb-3">
+                      <i className="fas fa-check-circle text-success" style={{ fontSize: '4rem' }}></i>
+                    </div>
+                    <h5 className="mb-3">Listing created. Redirecting you to the homepage</h5>
+                    <div className="spinner-border text-primary" role="status">
+                      <span className="visually-hidden">Loading...</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </>
+        )}
       </div>
     );
   }

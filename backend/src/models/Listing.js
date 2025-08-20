@@ -13,7 +13,8 @@ const listingSchema = new mongoose.Schema({
   district: { type: String, required: true, trim: true },
   city: { type: String, required: true, trim: true },
   category: { type: String, required: true, enum: ['vehicles','electronics','clothing','home','property','sports','services'], lowercase: true },
-  image: { type: String, default: null },
+  image: { type: String, default: null }, // Keep for backward compatibility
+  images: [{ type: String }], // New field for multiple images (up to 3)
   owner: { type: String, required: true, trim: true },
   isActive: { type: Boolean, default: true },
   // Listing availability status controlled by owners and booking flow

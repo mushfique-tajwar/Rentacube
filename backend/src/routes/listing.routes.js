@@ -10,10 +10,11 @@ router.get('/owner/:owner', controller.byOwner);
 router.get('/admin/all', controller.adminAll);
 router.get('/:id', controller.getOne);
 
-// Create/Update/Delete
-router.post('/create', upload.single('image'), controller.create);
+// Create/Update/Delete - now supports multiple images
+router.post('/create', upload.multiple, controller.create);
 router.post('/add', controller.addLegacy);
-router.put('/update/:id', upload.single('image'), controller.update);
+router.put('/update/:id', upload.multiple, controller.update);
+router.put('/toggle/:id', controller.toggleActive);
 router.delete('/:id', controller.softDelete);
 
 // Admin maintenance

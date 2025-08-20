@@ -24,7 +24,11 @@ export const ListingAPI = {
   all: (params) => api.get('/listings', { params }),
   byId: (id) => api.get(`/listings/${id}`),
   byOwner: (owner) => api.get(`/listings/owner/${owner}`),
-  update: (id, data) => api.put(`/listings/update/${id}`, data),
+  update: (id, data) => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    return api.put(`/listings/update/${id}`, data, { headers });
+  },
+  toggleActive: (id, owner) => api.put(`/listings/toggle/${id}`, { owner }),
   softDelete: (id, owner) => api.delete(`/listings/${id}`, { data: { owner } })
 };
 

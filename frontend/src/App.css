@@ -378,3 +378,21 @@ body { padding-top: 70px; }
 .dark-mode .minimal-search-group .search-addon { background: #ffffff !important; border-color: rgba(255,255,255,0.25) !important; color: #212529 !important; }
 .dark-mode .minimal-search-input { background: #ffffff !important; color: #212529 !important; border-color: rgba(255,255,255,0.25) !important; }
 .dark-mode .minimal-search-input::placeholder { color: #6c757d !important; }
+
+/* Image carousel improvements */
+.image-fade-transition {
+  transition: opacity 0.5s ease-in-out;
+}
+
+.nav-button-hover {
+  transition: opacity 0.2s ease-in-out;
+}
+
+.nav-button-hover:hover {
+  opacity: 1 !important;
+}
+
+/* Smooth scrolling for gallery */
+.gallery-container {
+  scroll-behavior: smooth;
+}

@@ -314,14 +314,42 @@ export default class Dashboard extends Component {
                               <button className="btn btn-secondary btn-sm" onClick={()=>this.setState({ editListingId:null })}>Cancel</button>
                             </>
                           ) : (
-                            <button className="btn btn-outline-primary btn-sm" onClick={()=>this.setState({ 
-                              editListingId: l.id,
-                              editTitle: l.title,
-                              editHourly: l.pricing?.hourly ?? '',
-                              editDaily: l.pricing?.daily ?? '',
-                              editMonthly: l.pricing?.monthly ?? '',
-                              editStatus: l.availability || 'available'
-                            })}>Edit</button>
+                            <>
+                              <button className="btn btn-outline-primary btn-sm" onClick={()=>this.setState({ 
+                                editListingId: l.id,
+                                editTitle: l.title,
+                                editHourly: l.pricing?.hourly ?? '',
+                                editDaily: l.pricing?.daily ?? '',
+                                editMonthly: l.pricing?.monthly ?? '',
+                                editStatus: l.availability || 'available'
+                              })}>Edit</button>
+                              <button 
+                                className={`btn btn-sm ${l.status === 'Active' ? 'btn-outline-warning' : 'btn-outline-success'}`}
+                                onClick={async ()=>{
+                                  try {
+                                    await ListingAPI.toggleActive(l.id, this.username);
+                                    this.loadListings(this.username);
+                                    this.setState({ message: `Listing ${l.status === 'Active' ? 'deactivated' : 'activated'} successfully.` });
+                                  } catch (e) { this.setState({ message: 'Failed to toggle listing status' }); }
+                                }}
+                              >
+                                {l.status === 'Active' ? 'Deactivate' : 'Activate'}
+                              </button>
+                              <button 
+                                className="btn btn-outline-danger btn-sm" 
+                                onClick={async ()=>{
+                                  if (window.confirm('Are you sure you want to delete this listing? This action cannot be undone and will also delete all associated images.')) {
+                                    try {
+                                      await ListingAPI.softDelete(l.id, this.username);
+                                      this.loadListings(this.username);
+                                      this.setState({ message: 'Listing deleted successfully.' });
+                                    } catch (e) { this.setState({ message: 'Failed to delete listing' }); }
+                                  }
+                                }}
+                              >
+                                Delete
+                              </button>
+                            </>
                           )}
                         </div>
                       </div>

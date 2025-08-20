@@ -22,13 +22,74 @@ export default class Homepage extends Component {
       filteredListings: [],
       isLoading: true,
       error: null,
-  imageLoadStates: {}, // Track loading state of each image
-  topMessage: ''
+      imageLoadStates: {}, // Track loading state of each image
+      currentImageIndices: {}, // Track current image index for each listing carousel
+      fadeStates: {}, // Track fade transition states for smooth image changes
+      topMessage: ''
     };
   }
 
   componentDidMount() {
   this.fetchListings();
+  this.initializeCarousels();
+  }
+
+  componentWillUnmount() {
+    // Clean up intervals when component unmounts
+    if (this.carouselIntervals) {
+      Object.values(this.carouselIntervals).forEach(interval => {
+        clearInterval(interval);
+      });
+    }
+  }
+
+  initializeCarousels = () => {
+    this.carouselIntervals = {};
+  }
+
+  setupCarouselForListing = (listingId, imageCount) => {
+    if (imageCount <= 1) return; // No carousel needed for single image
+    
+    // Clear existing interval if any
+    if (this.carouselIntervals[listingId]) {
+      clearInterval(this.carouselIntervals[listingId]);
+    }
+    
+    // Set up auto-scroll interval
+    this.carouselIntervals[listingId] = setInterval(() => {
+      // Start fade out
+      this.setState(prevState => ({
+        fadeStates: {
+          ...prevState.fadeStates,
+          [listingId]: 'fading'
+        }
+      }));
+      
+      // After fade out, change image and fade in
+      setTimeout(() => {
+        this.setState(prevState => ({
+          currentImageIndices: {
+            ...prevState.currentImageIndices,
+            [listingId]: ((prevState.currentImageIndices[listingId] || 0) + 1) % imageCount
+          },
+          fadeStates: {
+            ...prevState.fadeStates,
+            [listingId]: 'visible'
+          }
+        }));
+      }, 250); // Half of the transition duration
+    }, 3000); // Change image every 3 seconds
+  }
+
+  // Format description with proper line breaks
+  formatDescription = (description) => {
+    if (!description) return '';
+    return description.split(/\r?\n/).map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < description.split(/\r?\n/).length - 1 && <br />}
+      </span>
+    ));
   }
 
   // Fisher-Yates shuffle algorithm to randomize array order
@@ -60,6 +121,13 @@ export default class Homepage extends Component {
           if (this.hasActiveFilters()) {
             this.filterAndSortListings();
           }
+          // Set up carousels for listings with multiple images
+          randomizedListings.forEach(listing => {
+            const imageCount = this.getImageCount(listing);
+            if (imageCount > 1) {
+              this.setupCarouselForListing(listing._id, imageCount);
+            }
+          });
         });
       })
       .catch(error => {
@@ -97,6 +165,13 @@ export default class Homepage extends Component {
   handleMaxPriceChange = (e) => {
     const price = e.target.value;
     this.setState({ pendingMaxPrice: price });
+  }
+
+  getImageCount = (listing) => {
+    if (listing.images && Array.isArray(listing.images) && listing.images.length > 0) {
+      return listing.images.length;
+    }
+    return listing.image ? 1 : 0;
   }
 
   handleSortChange = (e) => {
@@ -246,10 +321,16 @@ export default class Homepage extends Component {
 
   // Get image path from database or return null for placeholder
   getImagePath = (listing) => {
-    if (!listing || !listing.image) {
-      return null;
+    if (!listing) return null;
+    
+    // Use multiple images if available, otherwise fall back to single image
+    if (listing.images && listing.images.length > 0) {
+      const currentIndex = this.state.currentImageIndices[listing._id] || 0;
+      return listing.images[currentIndex];
+    } else if (listing.image) {
+      return listing.image;
     }
-    return `/images/listings/${listing.image}`;
+    return null;
   }
 
   // Handle image loading success
@@ -552,18 +633,42 @@ export default class Homepage extends Component {
                             <img 
                               src={this.getImagePath(listing)}
                               alt={listing.name}
-                              className="position-absolute"
+                              className="position-absolute image-fade-transition"
                               style={{ 
                                 top: 0, 
                                 left: 0, 
                                 width: '100%', 
                                 height: '100%', 
                                 objectFit: 'cover',
-                                display: this.state.imageLoadStates[listing._id] === 'error' ? 'none' : 'block'
+                                display: this.state.imageLoadStates[listing._id] === 'error' ? 'none' : 'block',
+                                opacity: this.state.fadeStates[listing._id] === 'fading' ? 0 : 1
                               }}
                               onLoad={() => this.handleImageLoad(listing._id)}
                               onError={() => this.handleImageError(listing._id)}
                             />
+                            
+                            {/* Image indicators for multiple images */}
+                            {this.getImageCount(listing) > 1 && (
+                              <div className="position-absolute bottom-0 start-50 translate-middle-x mb-2">
+                                <div className="d-flex gap-1">
+                                  {Array.from({ length: this.getImageCount(listing) }, (_, index) => (
+                                    <div
+                                      key={index}
+                                      className={`rounded-circle ${
+                                        index === (this.state.currentImageIndices[listing._id] || 0)
+                                          ? 'bg-white'
+                                          : 'bg-white-50'
+                                      }`}
+                                      style={{
+                                        width: '6px',
+                                        height: '6px',
+                                        opacity: index === (this.state.currentImageIndices[listing._id] || 0) ? 1 : 0.6
+                                      }}
+                                    />
+                                  ))}
+                                </div>
+                              </div>
+                            )}
                             
                             {/* Error placeholder - only show when image fails to load */}
                             {this.state.imageLoadStates[listing._id] === 'error' && (
@@ -623,7 +728,7 @@ export default class Homepage extends Component {
                         </div>
                         
                         {/* Description */}
-                        <p className="card-text flex-grow-1">{listing.description}</p>
+                        <p className="card-text flex-grow-1">{this.formatDescription(listing.description)}</p>
                         
                         {/* View and booking counts */}
                         <div className="mb-2 text-muted small d-flex justify-content-between">

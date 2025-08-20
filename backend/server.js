@@ -8,8 +8,6 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
-// Serve static images (listing uploads)
-app.use('/images', express.static(require('path').join(__dirname, 'public/images')));
 
 connectDB();
 

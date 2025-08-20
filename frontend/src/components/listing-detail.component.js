@@ -214,6 +214,142 @@ export default class ListingDetail extends Component {
     }
   }
 
+  // Format description with proper line breaks
+  formatDescription = (description) => {
+    if (!description) return '';
+    return description.split(/\r?\n/).map((line, index) => (
+      <span key={index}>
+        {line}
+        {index < description.split(/\r?\n/).length - 1 && <br />}
+      </span>
+    ));
+  }
+
+  renderImageGallery = (listing) => {
+    const images = listing.images && listing.images.length > 0 ? listing.images : (listing.image ? [listing.image] : []);
+    
+    if (images.length === 0) {
+      return (
+        <div className="bg-light d-flex align-items-center justify-content-center" style={{ height: '400px' }}>
+          <div className="text-center text-muted">
+            <i className="fas fa-image fa-3x mb-2"></i>
+            <p className="mb-0">No Image Available</p>
+          </div>
+        </div>
+      );
+    }
+
+    if (images.length === 1) {
+      return (
+        <img 
+          src={images[0]} 
+          alt={listing.name} 
+          className="card-img-top" 
+          style={{ objectFit: 'cover', maxHeight: '400px' }}
+        />
+      );
+    }
+
+    // Multiple images - scrollable gallery
+    return (
+      <div style={{ position: 'relative' }}>
+        <div 
+          className="d-flex overflow-auto gallery-container" 
+          style={{ 
+            scrollSnapType: 'x mandatory',
+            scrollBehavior: 'smooth',
+            maxHeight: '400px'
+          }}
+          id={`gallery-${listing._id}`}
+        >
+          {images.map((image, index) => (
+            <img
+              key={index}
+              src={image}
+              alt={`${listing.name} ${index + 1}`}
+              className="flex-shrink-0"
+              style={{
+                width: '100%',
+                height: '400px',
+                objectFit: 'cover',
+                scrollSnapAlign: 'start'
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Left Navigation Button */}
+        <button
+          className="btn btn-dark btn-sm position-absolute top-50 start-0 translate-middle-y ms-2 nav-button-hover"
+          style={{ zIndex: 10, opacity: 0.7 }}
+          onClick={() => {
+            const gallery = document.getElementById(`gallery-${listing._id}`);
+            if (gallery) {
+              gallery.scrollBy({
+                left: -gallery.clientWidth,
+                behavior: 'smooth'
+              });
+            }
+          }}
+        >
+          <i className="fas fa-chevron-left"></i>
+        </button>
+        
+        {/* Right Navigation Button */}
+        <button
+          className="btn btn-dark btn-sm position-absolute top-50 end-0 translate-middle-y me-2 nav-button-hover"
+          style={{ zIndex: 10, opacity: 0.7 }}
+          onClick={() => {
+            const gallery = document.getElementById(`gallery-${listing._id}`);
+            if (gallery) {
+              gallery.scrollBy({
+                left: gallery.clientWidth,
+                behavior: 'smooth'
+              });
+            }
+          }}
+        >
+          <i className="fas fa-chevron-right"></i>
+        </button>
+        
+        {/* Navigation dots */}
+        <div className="position-absolute bottom-0 start-50 translate-middle-x mb-3">
+          <div className="d-flex gap-2">
+            {images.map((_, index) => (
+              <button
+                key={index}
+                className="btn btn-sm rounded-circle p-0"
+                style={{
+                  width: '10px',
+                  height: '10px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.7)',
+                  border: '1px solid rgba(255, 255, 255, 0.9)'
+                }}
+                onClick={() => {
+                  const gallery = document.getElementById(`gallery-${listing._id}`);
+                  if (gallery) {
+                    gallery.scrollTo({
+                      left: index * gallery.clientWidth,
+                      behavior: 'smooth'
+                    });
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        
+        {/* Image counter */}
+        <div className="position-absolute top-0 end-0 m-2">
+          <span className="badge bg-dark bg-opacity-75">
+            <i className="fas fa-images me-1"></i>
+            {images.length}
+          </span>
+        </div>
+      </div>
+    );
+  }
+
   render() {
   const { listing, reviews, loading, error } = this.state;
     if (loading) return <div className="container mt-4"><p>Loading...</p></div>;
@@ -228,11 +364,12 @@ export default class ListingDetail extends Component {
         <div className="row">
           <div className="col-md-7">
             <div className="card mb-4">
-              {listing.image && <img src={`/images/listings/${listing.image}`} alt={listing.name} className="card-img-top" style={{objectFit:'cover', maxHeight:'400px'}}/>}
+              {/* Image Gallery */}
+              {this.renderImageGallery(listing)}
               <div className="card-body">
                 <h3>{listing.name}</h3>
                 <p className="text-muted mb-1">{listing.city}, {listing.district}</p>
-                <p>{listing.description}</p>
+                <p>{this.formatDescription(listing.description)}</p>
                 <div className="mb-2">
                   {listing.pricing?.hourly && <span className="badge bg-primary me-2">${listing.pricing.hourly}/hr</span>}
                   {listing.pricing?.daily && <span className="badge bg-success me-2">${listing.pricing.daily}/day</span>}
@@ -411,19 +548,21 @@ export default class ListingDetail extends Component {
                 <div className="card-body">
                   {!this.state.editMode ? (
                     <div className="d-grid gap-2">
-                      <button className="btn btn-outline-primary" onClick={()=>this.setState({ editMode:true, editName: listing.name, editDescription: listing.description, editHourly: listing.pricing?.hourly || '', editDaily: listing.pricing?.daily || '', editMonthly: listing.pricing?.monthly || '', editImage: null, editStatus: listing.status || 'available' })}>Edit Listing</button>
+                      <button className="btn btn-outline-primary" onClick={()=>this.setState({ editMode:true, editName: listing.name, editDescription: listing.description, editHourly: listing.pricing?.hourly || '', editDaily: listing.pricing?.daily || '', editMonthly: listing.pricing?.monthly || '', editImages: [], editStatus: listing.status || 'available' })}>Edit Listing</button>
                       <button className="btn btn-outline-danger" onClick={async ()=>{
-                        try {
-                          await ListingAPI.softDelete(listing._id, username);
-                          window.location.replace('/');
-                        } catch(e) { this.setState({ bookingMessage: e.response?.data || 'Failed to delete listing' }); }
+                        if (window.confirm('Are you sure you want to delete this listing? This action cannot be undone and will also delete all associated images.')) {
+                          try {
+                            await ListingAPI.softDelete(listing._id, username);
+                            window.location.replace('/');
+                          } catch(e) { this.setState({ bookingMessage: e.response?.data || 'Failed to delete listing' }); }
+                        }
                       }}>Delete Listing</button>
                     </div>
                   ) : (
                     <form onSubmit={async (e)=>{
                       e.preventDefault();
                       try {
-                        if (this.state.editImage) {
+                        if (this.state.editImages && this.state.editImages.length > 0) {
                           const form = new FormData();
                           form.append('owner', username);
                           form.append('name', this.state.editName||'');
@@ -432,7 +571,10 @@ export default class ListingDetail extends Component {
                           if (this.state.editDaily !== '') form.append('pricingDaily', this.state.editDaily);
                           if (this.state.editMonthly !== '') form.append('pricingMonthly', this.state.editMonthly);
                           if (this.state.editStatus) form.append('status', this.state.editStatus);
-                          form.append('image', this.state.editImage);
+                          // Append all selected images
+                          this.state.editImages.forEach((image) => {
+                            form.append('images', image);
+                          });
                           await ListingAPI.update(listing._id, form);
                         } else {
                           const payload = { owner: username, name: this.state.editName||'', description: this.state.editDescription||'' };
@@ -476,8 +618,24 @@ export default class ListingDetail extends Component {
                         </select>
                       </div>
                       <div className="mb-3">
-                        <label className="form-label">Replace Image</label>
-                        <input type="file" accept="image/*" className="form-control" onChange={(e)=>this.setState({editImage:e.target.files?.[0]||null})} />
+                        <label className="form-label">Replace Images (Max 3)</label>
+                        <input type="file" accept="image/*" multiple className="form-control" onChange={(e)=>{
+                          const files = Array.from(e.target.files) || [];
+                          const validFiles = [];
+                          
+                          files.forEach(file => {
+                            if (file.size > 200 * 1024) {
+                              alert(`Image "${file.name}" exceeds 200KB limit. Please choose a smaller image.`);
+                            } else {
+                              validFiles.push(file);
+                            }
+                          });
+                          
+                          this.setState({editImages: validFiles});
+                        }} />
+                        <div className="form-text">
+                          Select 1-3 images. Maximum file size per image: 200KB.
+                        </div>
                       </div>
                       <div className="d-flex gap-2">
                         <button className="btn btn-primary" type="submit">Save</button>

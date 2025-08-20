@@ -1,7 +1,6 @@
-const path = require('path');
-const fs = require('fs');
 const listingService = require('../services/listing.service');
 const Listing = require('../models/Listing');
+const cloudinary = require('../config/cloudinary');
 
 exports.getAll = async (req, res) => {
   const { category, location, owner, includeBooked } = req.query;
@@ -29,21 +28,44 @@ exports.getOne = async (req, res) => {
 exports.create = async (req, res) => {
   const { name, description, pricingHourly, pricingDaily, pricingMonthly, district, city, category, owner } = req.body;
   if (!name || !name.trim() || !description || !description.trim() || !district || !city || !category || !owner || !owner.trim()) return res.status(400).json('All required fields must be provided');
-  if (!req.file) return res.status(400).json('Image is required for all listings');
+  if (!req.files || req.files.length === 0) return res.status(400).json('At least one image is required for all listings');
+  if (req.files.length > 3) return res.status(400).json('Maximum 3 images allowed per listing');
   if (!pricingHourly && !pricingDaily && !pricingMonthly) return res.status(400).json('At least one pricing option (hourly, daily, or monthly) must be provided');
+  
   const pricing = {};
   if (pricingHourly) { const v = Number(pricingHourly); if (isNaN(v) || v <= 0) return res.status(400).json('Hourly price must be a valid number greater than 0'); pricing.hourly = v; }
   if (pricingDaily) { const v = Number(pricingDaily); if (isNaN(v) || v <= 0) return res.status(400).json('Daily price must be a valid number greater than 0'); pricing.daily = v; }
   if (pricingMonthly) { const v = Number(pricingMonthly); if (isNaN(v) || v <= 0) return res.status(400).json('Monthly price must be a valid number greater than 0'); pricing.monthly = v; }
+  
   const validCategories = ['vehicles','electronics','clothing','home','property','sports','services'];
   if (!validCategories.includes(category.toLowerCase())) return res.status(400).json('Invalid category');
-  const imageFilename = req.file.filename;
+  
+  const imageUrls = req.files.map(file => file.path); // Cloudinary URLs
   const location = `${city.trim()}, ${district.trim()}`;
+  
   try {
-    const newListing = await listingService.create({ name: name.trim(), description: description.trim(), pricing, location, district: district.trim(), city: city.trim(), category: category.toLowerCase(), image: imageFilename, owner: owner.trim() });
+    const newListing = await listingService.create({ 
+      name: name.trim(), 
+      description: description.trim(), 
+      pricing, 
+      location, 
+      district: district.trim(), 
+      city: city.trim(), 
+      category: category.toLowerCase(), 
+      image: imageUrls[0], // Keep first image for backward compatibility
+      images: imageUrls, // Store all images
+      owner: owner.trim() 
+    });
     res.json({ message: 'Listing created successfully!', listing: newListing });
   } catch (e) {
-    if (req.file) fs.unlink(req.file.path, ()=>{});
+    // Delete from Cloudinary if database save fails
+    if (req.files) {
+      req.files.forEach(file => {
+        if (file.public_id) {
+          cloudinary.uploader.destroy(file.public_id, () => {});
+        }
+      });
+    }
     res.status(400).json('Error: ' + e.message);
   }
 };
@@ -83,15 +105,49 @@ exports.update = async (req, res) => {
       listing.status = req.body.status;
       if (req.body.status !== 'booked') { listing.bookedFrom = undefined; listing.bookedUntil = undefined; }
     }
-    if (req.file) {
-      // Replace image file if provided
-      if (listing.image) {
-        const prevPath = path.join(__dirname, '../../../frontend/public/images/listings', listing.image);
-        fs.unlink(prevPath, ()=>{});
+    if (req.files && req.files.length > 0) {
+      // Handle multiple image updates
+      if (req.files.length > 3) return res.status(400).json('Maximum 3 images allowed per listing');
+      
+      // Delete old images from Cloudinary
+      if (listing.images && listing.images.length > 0) {
+        listing.images.forEach(imageUrl => {
+          const urlParts = imageUrl.split('/');
+          const publicIdWithExt = urlParts[urlParts.length - 1];
+          const publicId = publicIdWithExt.split('.')[0];
+          cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
+        });
+      } else if (listing.image) {
+        // Handle old single image format
+        const urlParts = listing.image.split('/');
+        const publicIdWithExt = urlParts[urlParts.length - 1];
+        const publicId = publicIdWithExt.split('.')[0];
+        cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
       }
-      listing.image = req.file.filename;
-    } else if (req.body.image !== undefined) {
-      listing.image = req.body.image; // allows clearing
+      
+      // Add new images
+      const newImageUrls = req.files.map(file => file.path);
+      listing.images = newImageUrls;
+      listing.image = newImageUrls[0]; // Keep first image for backward compatibility
+    } else if (req.body.images !== undefined) {
+      // Handle image removal/reordering from frontend
+      const newImages = Array.isArray(req.body.images) ? req.body.images : [];
+      if (newImages.length === 0) return res.status(400).json('At least one image is required');
+      if (newImages.length > 3) return res.status(400).json('Maximum 3 images allowed per listing');
+      
+      // Delete removed images from Cloudinary
+      if (listing.images) {
+        const removedImages = listing.images.filter(img => !newImages.includes(img));
+        removedImages.forEach(imageUrl => {
+          const urlParts = imageUrl.split('/');
+          const publicIdWithExt = urlParts[urlParts.length - 1];
+          const publicId = publicIdWithExt.split('.')[0];
+          cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
+        });
+      }
+      
+      listing.images = newImages;
+      listing.image = newImages[0]; // Keep first image for backward compatibility
     }
     listing.isActive = req.body.isActive !== undefined ? req.body.isActive : listing.isActive;
     await listing.save();
@@ -104,8 +160,38 @@ exports.softDelete = async (req, res) => {
     const listing = await listingService.findById(req.params.id);
     if (!listing) return res.status(404).json('Listing not found');
     if (listing.owner !== req.body.owner) return res.status(403).json('You can only delete your own listings');
-    listing.isActive = false; await listing.save();
+    
+    // Delete all images from Cloudinary before soft deleting
+    if (listing.images && listing.images.length > 0) {
+      listing.images.forEach(imageUrl => {
+        const urlParts = imageUrl.split('/');
+        const publicIdWithExt = urlParts[urlParts.length - 1];
+        const publicId = publicIdWithExt.split('.')[0];
+        cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
+      });
+    } else if (listing.image) {
+      // Handle old single image format
+      const urlParts = listing.image.split('/');
+      const publicIdWithExt = urlParts[urlParts.length - 1];
+      const publicId = publicIdWithExt.split('.')[0];
+      cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
+    }
+    
+    // Permanently delete the listing from database
+    await listingService.delete(req.params.id);
     res.json('Listing deleted successfully!');
+  } catch (e) { res.status(400).json('Error: ' + e.message); }
+};
+
+exports.toggleActive = async (req, res) => {
+  try {
+    const listing = await listingService.findById(req.params.id);
+    if (!listing) return res.status(404).json('Listing not found');
+    if (listing.owner !== req.body.owner) return res.status(403).json('You can only modify your own listings');
+    
+    listing.isActive = !listing.isActive;
+    await listing.save();
+    res.json({ message: `Listing ${listing.isActive ? 'activated' : 'deactivated'} successfully!`, listing });
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 
@@ -165,10 +251,23 @@ exports.adminDelete = async (req, res) => {
   try {
     const listing = await listingService.delete(req.params.id);
     if (!listing) return res.status(404).json('Listing not found');
-    if (listing.image) {
-      const imagePath = path.join(__dirname, '../../../frontend/public/images/listings', listing.image);
-      fs.unlink(imagePath, ()=>{});
+    
+    // Delete all images from Cloudinary
+    if (listing.images && listing.images.length > 0) {
+      listing.images.forEach(imageUrl => {
+        const urlParts = imageUrl.split('/');
+        const publicIdWithExt = urlParts[urlParts.length - 1];
+        const publicId = publicIdWithExt.split('.')[0];
+        cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
+      });
+    } else if (listing.image) {
+      // Handle old single image format
+      const urlParts = listing.image.split('/');
+      const publicIdWithExt = urlParts[urlParts.length - 1];
+      const publicId = publicIdWithExt.split('.')[0];
+      cloudinary.uploader.destroy(`rentacube/listings/${publicId}`, () => {});
     }
+    
     res.json('Listing deleted successfully!');
   } catch (e) { res.status(400).json('Error: ' + e.message); }
 };
