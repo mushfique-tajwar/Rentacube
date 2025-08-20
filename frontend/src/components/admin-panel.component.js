@@ -1,19 +1,20 @@
 import React, { Component } from 'react';
 import axios from 'axios';
-import { UserAPI } from '../services/api';
+import { UserAPI, AnalyticsAPI } from '../services/api';
 
 export default class AdminPanel extends Component {
   constructor(props) {
     super(props);
 
     this.state = {
-  activeTab: 'users',
+      activeTab: 'users',
       users: [],
       listings: [],
-  pendingRenters: [],
+      pendingRenters: [],
+      analytics: null,
       isLoading: false,
       message: '',
-  confirmAction: null,
+      confirmAction: null,
       editingUser: null,
       editingListing: null,
       editForm: {
@@ -42,12 +43,12 @@ export default class AdminPanel extends Component {
       setTimeout(() => {
         window.location.href = '/';
       }, 2000);
-  return;
+      return;
     }
     
     this.fetchUsers();
     this.fetchListings();
-  this.fetchPendingRenters();
+    this.fetchPendingRenters();
   }
 
   fetchUsers = () => {
@@ -95,9 +96,25 @@ export default class AdminPanel extends Component {
       });
   }
 
+  fetchAnalytics = () => {
+    this.setState({ isLoading: true });
+    AnalyticsAPI.getAnalytics()
+      .then(({data}) => {
+        this.setState({ analytics: data, isLoading: false });
+      })
+      .catch(error => {
+        console.error('Error fetching analytics:', error);
+        this.setState({ 
+          message: 'Error fetching analytics: ' + (error.response?.data || error.message),
+          isLoading: false 
+        });
+      });
+  }
+
   handleTabChange = (tab) => {
     this.setState({ activeTab: tab, message: '', editingUser: null, editingListing: null });
-  if (tab === 'approvals') this.fetchPendingRenters();
+    if (tab === 'approvals') this.fetchPendingRenters();
+    if (tab === 'analytics') this.fetchAnalytics();
   }
 
   handleDeleteUser = (userId) => {
@@ -242,7 +259,7 @@ export default class AdminPanel extends Component {
   }
 
   render() {
-    const { activeTab, users, listings, isLoading, message, editingUser, editingListing, editForm, confirmAction } = this.state;
+    const { activeTab, users, listings, isLoading, message, editingUser, editingListing, editForm, confirmAction, analytics } = this.state;
 
     return (
       <div className="container-fluid mt-4">
@@ -318,6 +335,14 @@ export default class AdminPanel extends Component {
               onClick={() => this.handleTabChange('approvals')}
             >
               <i className="fas fa-check-circle me-2"></i>Approvals
+            </button>
+          </li>
+          <li className="nav-item">
+            <button 
+              className={`nav-link ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => this.handleTabChange('analytics')}
+            >
+              <i className="fas fa-chart-bar me-2"></i>Analytics
             </button>
           </li>
         </ul>
@@ -509,7 +534,7 @@ export default class AdminPanel extends Component {
                               listing.name
                             )}
                           </td>
-                          <td>{listing.owner}</td>
+                          <td>{listing.ownerFullName || listing.owner}</td>
                           <td>
                             {editingListing === listing._id ? (
                               <select 
@@ -700,6 +725,215 @@ export default class AdminPanel extends Component {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Analytics Tab */}
+        {activeTab === 'analytics' && (
+          <div className="row">
+            <div className="col-12">
+              <h4>Website Analytics</h4>
+              {isLoading ? (
+                <div className="text-center">
+                  <div className="spinner-border" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              ) : analytics ? (
+                <>
+                  {/* Overview Cards */}
+                  <div className="row mb-4">
+                    <div className="col-md-3">
+                      <div className="card bg-primary text-white">
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between">
+                            <div>
+                              <h6 className="card-title">Total Users</h6>
+                              <h3 className="mb-0">{analytics.users.total}</h3>
+                            </div>
+                            <div className="align-self-center">
+                              <i className="fas fa-users fa-2x"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="card bg-success text-white">
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between">
+                            <div>
+                              <h6 className="card-title">Total Listings</h6>
+                              <h3 className="mb-0">{analytics.listings.total}</h3>
+                            </div>
+                            <div className="align-self-center">
+                              <i className="fas fa-list fa-2x"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="card bg-info text-white">
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between">
+                            <div>
+                              <h6 className="card-title">Total Views</h6>
+                              <h3 className="mb-0">{analytics.views.total}</h3>
+                            </div>
+                            <div className="align-self-center">
+                              <i className="fas fa-eye fa-2x"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <div className="card bg-warning text-dark">
+                        <div className="card-body">
+                          <div className="d-flex justify-content-between">
+                            <div>
+                              <h6 className="card-title">Transactions</h6>
+                              <h3 className="mb-0">{analytics.transactions.totalTransactions}</h3>
+                            </div>
+                            <div className="align-self-center">
+                              <i className="fas fa-exchange-alt fa-2x"></i>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Detailed Statistics */}
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="card shadow">
+                        <div className="card-header">
+                          <h5 className="mb-0">User Statistics</h5>
+                        </div>
+                        <div className="card-body">
+                          <div className="row">
+                            <div className="col-6">
+                              <div className="text-center">
+                                <h4 className="text-primary">{analytics.users.customers}</h4>
+                                <p className="mb-0">Customers</p>
+                              </div>
+                            </div>
+                            <div className="col-6">
+                              <div className="text-center">
+                                <h4 className="text-success">{analytics.users.renters}</h4>
+                                <p className="mb-0">Renters</p>
+                              </div>
+                            </div>
+                          </div>
+                          {analytics.users.pendingRenters > 0 && (
+                            <div className="mt-3">
+                              <div className="alert alert-warning py-2">
+                                <i className="fas fa-clock me-2"></i>
+                                {analytics.users.pendingRenters} pending renter approval{analytics.users.pendingRenters > 1 ? 's' : ''}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="card shadow">
+                        <div className="card-header">
+                          <h5 className="mb-0">Listing Statistics</h5>
+                        </div>
+                        <div className="card-body">
+                          <div className="row mb-3">
+                            <div className="col-6">
+                              <div className="text-center">
+                                <h4 className="text-success">{analytics.listings.active}</h4>
+                                <p className="mb-0">Active</p>
+                              </div>
+                            </div>
+                            <div className="col-6">
+                              <div className="text-center">
+                                <h4 className="text-secondary">{analytics.listings.inactive}</h4>
+                                <p className="mb-0">Inactive</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="row mt-4">
+                    <div className="col-md-6">
+                      <div className="card shadow">
+                        <div className="card-header">
+                          <h5 className="mb-0">Listings by Category</h5>
+                        </div>
+                        <div className="card-body">
+                          {Object.keys(analytics.listings.byCategory).length === 0 ? (
+                            <p className="text-muted mb-0">No listings yet.</p>
+                          ) : (
+                            <div className="table-responsive">
+                              <table className="table table-sm">
+                                <tbody>
+                                  {Object.entries(analytics.listings.byCategory)
+                                    .sort(([,a], [,b]) => b - a)
+                                    .map(([category, count]) => (
+                                    <tr key={category}>
+                                      <td>
+                                        <span className="badge bg-primary me-2">
+                                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                                        </span>
+                                      </td>
+                                      <td className="text-end">
+                                        <strong>{count}</strong>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="card shadow">
+                        <div className="card-header">
+                          <h5 className="mb-0">Financial Overview</h5>
+                        </div>
+                        <div className="card-body">
+                          <div className="mb-3">
+                            <h6>Total Money Exchanged</h6>
+                            <h4 className="text-success">${analytics.transactions.totalMoneyExchanged.toFixed(2)}</h4>
+                          </div>
+                          <div className="row">
+                            <div className="col-6">
+                              <small className="text-muted">Total Bookings</small>
+                              <p className="mb-1"><strong>{analytics.transactions.totalBookings}</strong></p>
+                            </div>
+                            <div className="col-6">
+                              <small className="text-muted">Completed</small>
+                              <p className="mb-1"><strong>{analytics.transactions.completedBookings}</strong></p>
+                            </div>
+                            <div className="col-6">
+                              <small className="text-muted">Pending</small>
+                              <p className="mb-1"><strong>{analytics.transactions.pendingBookings}</strong></p>
+                            </div>
+                            <div className="col-6">
+                              <small className="text-muted">Cancelled</small>
+                              <p className="mb-1"><strong>{analytics.transactions.cancelledBookings}</strong></p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="alert alert-info">No analytics data available.</div>
+              )}
             </div>
           </div>
         )}

@@ -59,7 +59,7 @@ exports.create = async (req, res) => {
 };
 
 exports.forUser = async (req, res) => {
-  try { const bookings = await bookingService.findForUser(req.params.username); res.json(bookings); }
+  try { const bookings = await bookingService.findForUserWithNames(req.params.username); res.json(bookings); }
   catch (e) { res.status(400).json('Error: ' + e.message); }
 };
 

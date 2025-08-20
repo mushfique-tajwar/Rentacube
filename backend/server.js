@@ -15,6 +15,7 @@ app.use('/users', require('./src/routes/user.routes'));
 app.use('/listings', require('./src/routes/listing.routes'));
 app.use('/bookings', require('./src/routes/booking.routes'));
 app.use('/reviews', require('./src/routes/review.routes'));
+app.use('/analytics', require('./src/routes/analytics.routes'));
 
 // Periodic job: auto-complete bookings that have passed their end date
 const bookingService = require('./src/services/booking.service');

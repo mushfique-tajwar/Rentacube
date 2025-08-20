@@ -274,6 +274,9 @@ exports.adminDelete = async (req, res) => {
 
 exports.adminAll = async (req, res) => {
   if (req.query.adminUsername !== 'admin') return res.status(403).json('Access denied. Admin privileges required.');
-  try { const listings = await listingService.search({}); res.json(listings); }
+  try { 
+    const listings = await listingService.searchWithOwnerDetails({});
+    res.json(listings); 
+  }
   catch (e) { res.status(400).json('Error: ' + e.message); }
 };

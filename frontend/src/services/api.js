@@ -47,4 +47,8 @@ export const ReviewAPI = {
   forRenter: (username) => api.get(`/reviews/renter/${username}`)
 };
 
+export const AnalyticsAPI = {
+  getAnalytics: () => api.post('/analytics/admin', { adminUsername: 'admin' })
+};
+
 export default api;

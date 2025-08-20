@@ -380,7 +380,7 @@ export default class Dashboard extends Component {
                         <div>
                           <h6>{b.property}</h6>
                           <p className="mb-1 text-muted">{b.dates}</p>
-                          <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
+                          <p className="mb-1 small text-muted">Renter: {b.renterFullName || b.renterUsername} | Customer: {b.customerFullName || b.customerUsername}</p>
                         </div>
                         <div className="text-end" style={{minWidth:'140px'}}>
                           <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>
@@ -513,7 +513,7 @@ export default class Dashboard extends Component {
                           <div>
                             <h6>{b.property}</h6>
                             <p className="mb-1 text-muted">{b.dates}</p>
-                            <p className="mb-1 small text-muted">Renter: {b.renterUsername} | Customer: {b.customerUsername}</p>
+                            <p className="mb-1 small text-muted">Renter: {b.renterFullName || b.renterUsername} | Customer: {b.customerFullName || b.customerUsername}</p>
                           </div>
                           <div className="text-end" style={{minWidth:'140px'}}>
                             <span className={`badge mb-1 ${b.status === 'Pending' ? 'bg-secondary' : b.status === 'Confirmed' ? 'bg-warning' : b.status === 'Completed' ? 'bg-success' : 'bg-danger'}`}>{b.status}</span>

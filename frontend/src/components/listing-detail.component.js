@@ -649,7 +649,7 @@ export default class ListingDetail extends Component {
             <div className="card">
               <div className="card-header"><h6 className="mb-0">Owner</h6></div>
               <div className="card-body">
-                <p className="mb-1"><strong>{listing.owner}</strong></p>
+                <p className="mb-1"><strong>{this.state.ownerProfile?.fullName || listing.owner}</strong></p>
                 {this.state.ownerProfile?.phone ? (
                   <p className="mb-1"><i className="fas fa-phone me-2"></i>{this.state.ownerProfile.phone}</p>
                 ) : (
